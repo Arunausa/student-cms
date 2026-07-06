@@ -3,227 +3,105 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sign in · Student Management System</title>
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
-    rel="stylesheet"
-  />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet"
-  />
+  <title>Sign In · Student Management System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    :root {
-      --bg-grad-1: #0f172a;
-      --bg-grad-2: #1e3a8a;
-      --bg-grad-3: #4338ca;
-      --brand: #6366f1;
-      --brand-dark: #4f46e5;
-    }
     * { box-sizing: border-box; }
-    html, body { height: 100%; }
     body {
-      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background:
-        radial-gradient(1200px 800px at 10% 10%, rgba(99,102,241,.35), transparent 60%),
-        radial-gradient(1000px 700px at 90% 90%, rgba(236,72,153,.25), transparent 60%),
-        linear-gradient(135deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 50%, var(--bg-grad-3) 100%);
-      color: #e2e8f0;
+      font-family: 'Inter', sans-serif;
+      background: #F4F7FE;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0;
-      padding: 1.5rem;
       min-height: 100vh;
-      overflow-x: hidden;
+      margin: 0;
     }
-    .login-shell {
-      width: 100%;
-      max-width: 980px;
-      display: grid;
-      grid-template-columns: 1.1fr 1fr;
-      background: rgba(15, 23, 42, 0.55);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border: 1px solid rgba(255,255,255,0.08);
+    .login-card {
+      background: #fff;
+      padding: 50px 40px;
       border-radius: 24px;
-      overflow: hidden;
-      box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
+      box-shadow: 0 8px 32px rgba(0,0,0,.08);
+      max-width: 420px;
+      width: 100%;
     }
-    @media (max-width: 820px) {
-      .login-shell { grid-template-columns: 1fr; max-width: 460px; }
-      .login-hero { display: none; }
-    }
-    .login-hero {
-      padding: 3rem 2.5rem;
-      background:
-        radial-gradient(600px 400px at 80% 0%, rgba(99,102,241,.45), transparent 60%),
-        radial-gradient(500px 400px at 0% 100%, rgba(236,72,153,.35), transparent 60%),
-        linear-gradient(160deg, #4f46e5, #1e1b4b);
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    .brand {
-      display: flex; align-items: center; gap: .75rem;
-      font-weight: 800; letter-spacing: .3px;
-    }
-    .brand .logo {
-      width: 44px; height: 44px; border-radius: 12px;
-      display: grid; place-items: center;
-      background: rgba(255,255,255,.15);
-      border: 1px solid rgba(255,255,255,.25);
-      font-size: 1.25rem;
-    }
-    .hero-title { font-size: 2.25rem; font-weight: 800; line-height: 1.15; margin: 2rem 0 1rem; }
-    .hero-sub { opacity: .9; line-height: 1.6; }
-    .hero-features { display: grid; gap: .65rem; margin-top: 1.75rem; }
-    .hero-features .item {
-      display: flex; align-items: center; gap: .65rem;
-      color: #cbd5e1;
-    }
-    .hero-features i { color: #a5b4fc; font-size: 1.1rem; }
-    .hero-foot { font-size: .8rem; opacity: .7; }
-
-    .login-card { padding: 3rem 2.5rem; }
-    .login-card h1 { font-weight: 800; color: #f8fafc; font-size: 1.6rem; }
-    .login-card .sub { color: #94a3b8; margin-bottom: 1.5rem; }
-    .form-label { color: #cbd5e1; font-weight: 500; font-size: .9rem; }
-    .form-control {
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      color: #f1f5f9;
+    .logo-box {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #FF9C00, #FFC048);
       border-radius: 12px;
-      padding: .75rem .9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.4rem;
+      margin: 0 auto 20px;
+    }
+    .login-card h2 {
+      font-weight: 700;
+      color: #2B3674;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .login-card .sub {
+      color: #A3AED0;
+      text-align: center;
+      margin-bottom: 28px;
+      font-size: .95rem;
+    }
+    .form-label {
+      font-weight: 500;
+      color: #2B3674;
+      font-size: .9rem;
+    }
+    .form-control {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: .95rem;
     }
     .form-control:focus {
-      background: rgba(15, 23, 42, 0.7);
-      border-color: #818cf8;
-      color: #f8fafc;
-      box-shadow: 0 0 0 .25rem rgba(99,102,241,.25);
+      border-color: #6366F1;
+      box-shadow: 0 0 0 .2rem rgba(99,102,241,.15);
+      background: #fff;
     }
-    .input-group-text {
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      border-right: none;
-      color: #94a3b8;
-      border-radius: 12px 0 0 12px;
-    }
-    .input-group .form-control { border-radius: 0 12px 12px 0; }
-    .btn-brand {
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    .btn-login {
+      background: #6366F1;
+      color: #fff;
       border: none;
-      color: #fff;
-      font-weight: 600;
-      padding: .8rem 1rem;
       border-radius: 12px;
+      padding: 12px;
       width: 100%;
-      transition: transform .15s ease, box-shadow .15s ease;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: background .2s;
     }
-    .btn-brand:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 12px 24px -10px rgba(99,102,241,.6);
-      color: #fff;
-    }
-    .demo-block {
-      margin-top: 1.25rem;
-      padding: 1rem;
-      background: rgba(99,102,241,.08);
-      border: 1px dashed rgba(99,102,241,.35);
-      border-radius: 12px;
-      color: #cbd5e1;
-      font-size: .85rem;
-    }
-    .demo-block code { color: #a5b4fc; }
-    .demo-block .role-pill {
-      display: inline-block; font-size: .7rem; padding: 2px 8px;
-      border-radius: 999px; background: rgba(99,102,241,.25);
-      color: #c7d2fe; margin-right: .35rem;
-    }
-    .alert { border-radius: 12px; }
+    .btn-login:hover { background: #4F46E5; color: #fff; }
   </style>
 </head>
 <body>
-  <main class="login-shell" role="main">
-    <section class="login-hero">
-      <div>
-        <div class="brand">
-          <span class="logo"><i class="bi bi-mortarboard-fill"></i></span>
-          <span>SMS · Student Management</span>
-        </div>
-        <h1 class="hero-title">Run your campus, beautifully.</h1>
-        <p class="hero-sub">
-          One workspace for courses, attendance, scores, leaves, notifications, and feedback —
-          built for admins, teachers, and students.
-        </p>
-        <div class="hero-features">
-          <div class="item"><i class="bi bi-check2-circle"></i> Role-based access (admin / teacher / student)</div>
-          <div class="item"><i class="bi bi-check2-circle"></i> Real-time attendance & score tracking</div>
-          <div class="item"><i class="bi bi-check2-circle"></i> Leave workflow with admin approval</div>
-          <div class="item"><i class="bi bi-check2-circle"></i> Charts, dashboards, and notifications</div>
-        </div>
+  <div class="login-card">
+    <div class="logo-box">S</div>
+    <h2>Welcome Back</h2>
+    <p class="sub">Student Management System</p>
+
+    <% if (error) { %>
+      <div class="alert alert-danger py-2 small"><%= error %></div>
+    <% } %>
+
+    <form method="POST" action="/login">
+      <div class="mb-3">
+        <label class="form-label" for="email">Email</label>
+        <input id="email" name="email" type="text" class="form-control" placeholder="you@example.com" required />
       </div>
-      <div class="hero-foot">© <%= new Date().getFullYear() %> SMS. Built for production.</div>
-    </section>
-
-    <section class="login-card">
-      <h1>Welcome back</h1>
-      <p class="sub">Sign in to continue to your dashboard.</p>
-
-      <% if (typeof flash !== 'undefined' && flash) { %>
-        <div class="alert alert-<%= flash.type === 'success' ? 'success' : 'danger' %> py-2 small mb-3">
-          <%= flash.message %>
-        </div>
-      <% } %>
-
-      <form method="POST" action="/login" novalidate>
-        <div class="mb-3">
-          <label class="form-label" for="email">Email</label>
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              class="form-control"
-              placeholder="you@sms.local"
-              autocomplete="username"
-              required
-            />
-          </div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="password">Password</label>
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              class="form-control"
-              placeholder="••••••••"
-              autocomplete="current-password"
-              required
-            />
-          </div>
-        </div>
-        <button class="btn btn-brand" type="submit">
-          <i class="bi bi-box-arrow-in-right me-1"></i> Sign in
-        </button>
-      </form>
-
-      <div class="demo-block">
-        <div class="mb-1"><strong>Demo accounts</strong> (created on first run):</div>
-        <div><span class="role-pill">admin</span><code>admin@sms.local</code> · <code>admin123</code></div>
-        <div><span class="role-pill">teacher</span><code>teacher@sms.local</code> · <code>teacher123</code></div>
-        <div><span class="role-pill">student</span><code>student@sms.local</code> · <code>student123</code></div>
+      <div class="mb-3">
+        <label class="form-label" for="password">Password</label>
+        <input id="password" name="password" type="password" class="form-control" placeholder="••••••••" required />
       </div>
-    </section>
-  </main>
+      <button type="submit" class="btn btn-login">Sign In</button>
+    </form>
+  </div>
 </body>
 </html>

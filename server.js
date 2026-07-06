@@ -1,228 +1,95 @@
 /**
- * Advanced Student Management System
- * Single-file MVC server (models, services, controllers, routes).
- * Deployable as: server.js + package.json + views/login.ejs + views/app.ejs
- *
- * Required env: MONGODB_URI
- * Optional:      PORT (default 3000), SESSION_SECRET, NODE_ENV
+ * Student Management System — server.js
+ * Single-file server: models, middleware, routes, appHandler.
+ * Deploy on Render.com with MONGODB_URI env var.
  */
 
 'use strict';
 
-require('dotenv').config();
-
 const path = require('path');
 const express = require('express');
-const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
-const bcrypt = require('bcryptjs');
-const helmet = require('helmet');
-const compression = require('compression');
-const cookieParser = require('cookie-parser');
-const methodOverride = require('method-override');
-const rateLimit = require('express-rate-limit');
+const mongoose = require('mongoose');
 
 /* ====================================================================== */
 /* CONFIG                                                                 */
 /* ====================================================================== */
 
-const PORT = parseInt(process.env.PORT, 10) || 3000;
+const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI;
-const SESSION_SECRET =
-  process.env.SESSION_SECRET || 'sms-dev-secret-change-me-in-production';
-const IS_PROD = process.env.NODE_ENV === 'production';
 
 if (!MONGODB_URI) {
-  console.error('FATAL: MONGODB_URI environment variable is required.');
+  console.error('ERROR: MONGODB_URI environment variable is not set.');
+  console.error('Please set MONGODB_URI in your Render.com environment variables.');
   process.exit(1);
 }
 
 /* ====================================================================== */
-/* MONGOOSE CONNECTION                                                    */
+/* MONGOOSE MODELS                                                        */
 /* ====================================================================== */
 
-mongoose.set('strictQuery', true);
+const { Schema, model } = mongoose;
 
-mongoose
-  .connect(MONGODB_URI, {
-    serverSelectionTimeoutMS: 15000,
-    maxPoolSize: 25,
-  })
-  .then(() => console.log('MongoDB connected'))
-  .catch((err) => {
-    console.error('MongoDB connection error:', err.message);
-    process.exit(1);
-  });
-
-/* ====================================================================== */
-/* MODELS                                                                 */
-/* ====================================================================== */
-
-const { Schema, model, Types } = mongoose;
-
-const ROLES = Object.freeze({
-  ADMIN: 'admin',
-  TEACHER: 'teacher',
-  STUDENT: 'student',
+const courseSchema = new Schema({
+  name: { type: String, required: true }
 });
 
-const userSchema = new Schema(
-  {
-    name: { type: String, required: true, trim: true },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-      index: true,
-    },
-    passwordHash: { type: String, required: true },
-    role: {
-      type: String,
-      enum: Object.values(ROLES),
-      required: true,
-      index: true,
-    },
-    rollNo: { type: String, trim: true, default: null },
-    course: { type: Types.ObjectId, ref: 'Course', default: null },
-    phone: { type: String, trim: true, default: '' },
-    avatar: { type: String, default: '' },
-    active: { type: Boolean, default: true },
-  },
-  { timestamps: true }
-);
+const subjectSchema = new Schema({
+  name: { type: String, required: true },
+  course_id: { type: Schema.Types.ObjectId, ref: 'Course' }
+});
 
-userSchema.methods.verifyPassword = function verifyPassword(plain) {
-  return bcrypt.compare(plain, this.passwordHash);
-};
+const userSchema = new Schema({
+  full_name: { type: String, required: true },
+  email: { type: String, required: true },
+  password: { type: String, default: '123456' },
+  role: { type: String, enum: ['admin', 'staff', 'student'], required: true },
+  gender: { type: String },
+  address: { type: String },
+  profile_pic: { type: String, default: 'default.png' },
+  course_id: { type: Schema.Types.ObjectId, ref: 'Course' },
+  session_id: { type: String }
+});
 
-userSchema.statics.hashPassword = function hashPassword(plain) {
-  return bcrypt.hash(plain, 10);
-};
+const attendanceSchema = new Schema({
+  student_id: { type: Schema.Types.ObjectId, ref: 'User' },
+  subject_id: { type: Schema.Types.ObjectId, ref: 'Subject' },
+  course_id: { type: Schema.Types.ObjectId, ref: 'Course' },
+  status: { type: String },
+  date: { type: String }
+});
 
-const courseSchema = new Schema(
-  {
-    name: { type: String, required: true, trim: true, unique: true },
-    code: { type: String, required: true, trim: true, unique: true, uppercase: true },
-    description: { type: String, default: '' },
-    durationYears: { type: Number, default: 3, min: 1, max: 6 },
-    active: { type: Boolean, default: true },
-  },
-  { timestamps: true }
-);
+const scoreSchema = new Schema({
+  student_id: { type: Schema.Types.ObjectId, ref: 'User' },
+  subject_id: { type: Schema.Types.ObjectId, ref: 'Subject' },
+  score: { type: Number }
+});
 
-const subjectSchema = new Schema(
-  {
-    name: { type: String, required: true, trim: true },
-    code: { type: String, required: true, trim: true, uppercase: true },
-    course: { type: Types.ObjectId, ref: 'Course', required: true, index: true },
-    teacher: { type: Types.ObjectId, ref: 'User', default: null },
-    credits: { type: Number, default: 3, min: 1, max: 10 },
-    description: { type: String, default: '' },
-  },
-  { timestamps: true }
-);
-subjectSchema.index({ code: 1, course: 1 }, { unique: true });
+const leaveSchema = new Schema({
+  user_id: { type: Schema.Types.ObjectId, ref: 'User' },
+  role: { type: String },
+  date: { type: String },
+  message: { type: String },
+  status: { type: String, default: 'Pending' },
+  created_at: { type: Date, default: Date.now }
+});
 
-const attendanceSchema = new Schema(
-  {
-    student: { type: Types.ObjectId, ref: 'User', required: true, index: true },
-    subject: { type: Types.ObjectId, ref: 'Subject', required: true, index: true },
-    date: { type: Date, required: true, index: true },
-    status: {
-      type: String,
-      enum: ['present', 'absent', 'late', 'excused'],
-      default: 'present',
-      required: true,
-    },
-    markedBy: { type: Types.ObjectId, ref: 'User', required: true },
-    remarks: { type: String, default: '', maxlength: 280 },
-  },
-  { timestamps: true }
-);
-attendanceSchema.index({ student: 1, subject: 1, date: 1 }, { unique: true });
+const notificationSchema = new Schema({
+  message: { type: String },
+  type: { type: String },
+  created_at: { type: Date, default: Date.now }
+});
 
-const scoreSchema = new Schema(
-  {
-    student: { type: Types.ObjectId, ref: 'User', required: true, index: true },
-    subject: { type: Types.ObjectId, ref: 'Subject', required: true, index: true },
-    examType: {
-      type: String,
-      enum: ['quiz', 'midterm', 'final', 'assignment', 'project'],
-      required: true,
-    },
-    marksObtained: { type: Number, required: true, min: 0 },
-    totalMarks: { type: Number, required: true, min: 1 },
-    remarks: { type: String, default: '' },
-    recordedBy: { type: Types.ObjectId, ref: 'User', required: true },
-  },
-  { timestamps: true }
-);
+const feedbackSchema = new Schema({
+  student_id: { type: Schema.Types.ObjectId, ref: 'User' },
+  message: { type: String },
+  created_at: { type: Date, default: Date.now }
+});
 
-const leaveSchema = new Schema(
-  {
-    student: { type: Types.ObjectId, ref: 'User', required: true, index: true },
-    fromDate: { type: Date, required: true },
-    toDate: { type: Date, required: true },
-    reason: { type: String, required: true, maxlength: 500 },
-    status: {
-      type: String,
-      enum: ['pending', 'approved', 'rejected'],
-      default: 'pending',
-      index: true,
-    },
-    decidedBy: { type: Types.ObjectId, ref: 'User', default: null },
-    decisionNote: { type: String, default: '' },
-    decidedAt: { type: Date, default: null },
-  },
-  { timestamps: true }
-);
-
-const notificationSchema = new Schema(
-  {
-    audience: {
-      type: String,
-      enum: ['all', 'admins', 'teachers', 'students', 'role'],
-      default: 'all',
-      index: true,
-    },
-    role: { type: String, enum: Object.values(ROLES), default: null },
-    title: { type: String, required: true, trim: true, maxlength: 140 },
-    body: { type: String, default: '' },
-    createdBy: { type: Types.ObjectId, ref: 'User', required: true },
-    reads: [{ type: Types.ObjectId, ref: 'User' }],
-  },
-  { timestamps: true }
-);
-
-const feedbackSchema = new Schema(
-  {
-    author: { type: Types.ObjectId, ref: 'User', required: true, index: true },
-    category: {
-      type: String,
-      enum: ['bug', 'feature', 'content', 'teacher', 'general'],
-      default: 'general',
-    },
-    subject: { type: String, required: true, trim: true, maxlength: 140 },
-    body: { type: String, required: true, maxlength: 2000 },
-    rating: { type: Number, min: 1, max: 5, default: null },
-    status: {
-      type: String,
-      enum: ['open', 'reviewed', 'resolved', 'dismissed'],
-      default: 'open',
-      index: true,
-    },
-    response: { type: String, default: '' },
-    respondedBy: { type: Types.ObjectId, ref: 'User', default: null },
-  },
-  { timestamps: true }
-);
-
-const User = model('User', userSchema);
 const Course = model('Course', courseSchema);
 const Subject = model('Subject', subjectSchema);
+const User = model('User', userSchema);
 const Attendance = model('Attendance', attendanceSchema);
 const Score = model('Score', scoreSchema);
 const Leave = model('Leave', leaveSchema);
@@ -230,1093 +97,337 @@ const Notification = model('Notification', notificationSchema);
 const Feedback = model('Feedback', feedbackSchema);
 
 /* ====================================================================== */
-/* APP BOOTSTRAP                                                          */
+/* INIT ADMIN                                                             */
+/* ====================================================================== */
+
+async function initAdmin() {
+  try {
+    const existing = await User.findOne({ role: 'admin' });
+    if (!existing) {
+      await User.create({
+        full_name: 'Administrator',
+        email: 'admin@gmail.com',
+        password: '123456',
+        role: 'admin'
+      });
+      console.log('Default admin created: admin@gmail.com / 123456');
+    }
+  } catch (err) {
+    console.error('Error creating admin:', err.message);
+  }
+}
+
+/* ====================================================================== */
+/* DATABASE CONNECTION                                                    */
+/* ====================================================================== */
+
+mongoose.connect(MONGODB_URI)
+  .then(() => {
+    console.log('MongoDB connected');
+    initAdmin();
+  })
+  .catch((err) => {
+    console.error('MongoDB connection error:', err.message);
+    process.exit(1);
+  });
+
+/* ====================================================================== */
+/* EXPRESS APP                                                            */
 /* ====================================================================== */
 
 const app = express();
 
-app.set('trust proxy', 1);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      useDefaults: true,
-      directives: {
-        'default-src': ["'self'"],
-        'script-src': [
-          "'self'",
-          "'unsafe-inline'",
-          'https://cdn.jsdelivr.net',
-        ],
-        'style-src': [
-          "'self'",
-          "'unsafe-inline'",
-          'https://cdn.jsdelivr.net',
-          'https://fonts.googleapis.com',
-        ],
-        'font-src': ["'self'", 'https://fonts.gstatic.com', 'https://cdn.jsdelivr.net', 'data:'],
-        'img-src': ["'self'", 'data:', 'https:'],
-        'connect-src': ["'self'"],
-      },
-    },
-    crossOriginEmbedderPolicy: false,
-  })
-);
-app.use(compression());
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-app.use(cookieParser());
-app.use(methodOverride('_method'));
-app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1d' }));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 
-app.use(
-  session({
-    name: 'sms.sid',
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: MONGODB_URI,
-      ttl: 60 * 60 * 24 * 14, // 14 days
-      touchAfter: 60 * 15,
-    }),
-    cookie: {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: IS_PROD,
-      maxAge: 1000 * 60 * 60 * 24 * 14,
-    },
-  })
-);
-
-app.use((req, res, next) => {
-  res.locals.currentUser = req.session.user || null;
-  res.locals.flash = req.session.flash || null;
-  delete req.session.flash;
-  next();
-});
+app.use(session({
+  secret: 'secret_key_cms',
+  resave: false,
+  saveUninitialized: true
+}));
 
 /* ====================================================================== */
-/* HELPERS                                                                */
+/* MIDDLEWARE                                                              */
 /* ====================================================================== */
-
-function asyncHandler(fn) {
-  return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
-}
-
-function setFlash(req, type, message) {
-  req.session.flash = { type, message };
-}
 
 function requireAuth(req, res, next) {
-  if (!req.session.user) {
-    if (req.accepts('html')) return res.redirect('/login');
-    return res.status(401).json({ error: 'Authentication required' });
-  }
+  if (!req.session.user) return res.redirect('/login');
   next();
-}
-
-function requireRole(...roles) {
-  return (req, res, next) => {
-    if (!req.session.user) return res.status(401).json({ error: 'Authentication required' });
-    if (!roles.includes(req.session.user.role)) {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-    next();
-  };
-}
-
-function sanitize(input = '') {
-  return String(input).replace(/[<>]/g, (m) => (m === '<' ? '&lt;' : '&gt;'));
-}
-
-function parseDate(value, fallback = new Date()) {
-  if (!value) return fallback;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? fallback : d;
-}
-
-function startOfDay(d = new Date()) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function endOfDay(d = new Date()) {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
-
-function isValidObjectId(id) {
-  return Types.ObjectId.isValid(id) && String(new Types.ObjectId(id)) === String(id);
-}
-
-function userToClient(u) {
-  if (!u) return null;
-  return {
-    id: u._id,
-    name: u.name,
-    email: u.email,
-    role: u.role,
-    rollNo: u.rollNo,
-    course: u.course,
-    phone: u.phone,
-    avatar: u.avatar,
-    active: u.active,
-    createdAt: u.createdAt,
-  };
-}
-
-/* ====================================================================== */
-/* SEED                                                                   */
-/* ====================================================================== */
-
-async function seed() {
-  const userCount = await User.countDocuments();
-  if (userCount > 0) return;
-
-  console.log('Seeding initial data...');
-
-  const [adminHash, teacherHash, studentHash] = await Promise.all([
-    User.hashPassword('admin123'),
-    User.hashPassword('teacher123'),
-    User.hashPassword('student123'),
-  ]);
-
-  const course = await Course.create({
-    name: 'Bachelor of Computer Science',
-    code: 'BCS',
-    description: 'Four-year undergraduate CS program.',
-    durationYears: 4,
-  });
-
-  const admin = await User.create({
-    name: 'System Admin',
-    email: 'admin@sms.local',
-    passwordHash: adminHash,
-    role: ROLES.ADMIN,
-  });
-
-  const teacher = await User.create({
-    name: 'Dr. Ada Lovelace',
-    email: 'teacher@sms.local',
-    passwordHash: teacherHash,
-    role: ROLES.TEACHER,
-    course: course._id,
-    phone: '+1-555-0100',
-  });
-
-  const student = await User.create({
-    name: 'Alan Turing',
-    email: 'student@sms.local',
-    passwordHash: studentHash,
-    role: ROLES.STUDENT,
-    course: course._id,
-    rollNo: 'BCS-2026-001',
-    phone: '+1-555-0200',
-  });
-
-  const [algorithms, databases] = await Subject.create([
-    {
-      name: 'Algorithms',
-      code: 'CS301',
-      course: course._id,
-      teacher: teacher._id,
-      credits: 4,
-      description: 'Design and analysis of algorithms.',
-    },
-    {
-      name: 'Databases',
-      code: 'CS302',
-      course: course._id,
-      teacher: teacher._id,
-      credits: 3,
-      description: 'Relational databases and SQL.',
-    },
-  ]);
-
-  const today = startOfDay();
-  await Attendance.create([
-    { student: student._id, subject: algorithms._id, date: today, status: 'present', markedBy: teacher._id },
-    { student: student._id, subject: databases._id, date: today, status: 'present', markedBy: teacher._id },
-  ]);
-
-  await Score.create([
-    {
-      student: student._id,
-      subject: algorithms._id,
-      examType: 'midterm',
-      marksObtained: 84,
-      totalMarks: 100,
-      recordedBy: teacher._id,
-    },
-    {
-      student: student._id,
-      subject: databases._id,
-      examType: 'assignment',
-      marksObtained: 18,
-      totalMarks: 20,
-      recordedBy: teacher._id,
-    },
-  ]);
-
-  await Notification.create({
-    audience: 'all',
-    title: 'Welcome to the Student Management System',
-    body: 'Explore the dashboard, mark attendance, and submit feedback.',
-    createdBy: admin._id,
-  });
-
-  console.log('Seed complete. Demo logins:');
-  console.log('  admin@sms.local   / admin123');
-  console.log('  teacher@sms.local / teacher123');
-  console.log('  student@sms.local / student123');
 }
 
 /* ====================================================================== */
 /* AUTH ROUTES                                                            */
 /* ====================================================================== */
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res) => {
-    setFlash(req, 'danger', 'Too many login attempts. Please try again later.');
-    req.session.save(() => res.redirect('/login'));
-  },
+app.get('/', (req, res) => res.redirect('/app'));
+
+app.get('/login', (req, res) => {
+  res.render('login', { error: req.query.error || null });
 });
 
-app.get(
-  '/login',
-  asyncHandler(async (req, res) => {
-    if (req.session.user) return res.redirect('/');
-    res.render('login', { flash: res.locals.flash });
-  })
-);
-
-app.post(
-  '/login',
-  loginLimiter,
-  asyncHandler(async (req, res) => {
-    const email = String(req.body.email || '').trim().toLowerCase();
-    const password = String(req.body.password || '');
-
-    if (!email || !password) {
-      setFlash(req, 'danger', 'Email and password are required.');
-      return res.redirect('/login');
+app.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email, password });
+    if (!user) {
+      return res.redirect('/login?error=Invalid credentials');
     }
+    req.session.user = user;
+    return res.redirect('/app?page=dashboard');
+  } catch (err) {
+    console.error('Login error:', err);
+    return res.redirect('/login?error=Database Error');
+  }
+});
 
-    const user = await User.findOne({ email });
-    if (!user || !user.active) {
-      setFlash(req, 'danger', 'Invalid credentials.');
-      return res.redirect('/login');
-    }
-
-    const ok = await user.verifyPassword(password);
-    if (!ok) {
-      setFlash(req, 'danger', 'Invalid credentials.');
-      return res.redirect('/login');
-    }
-
-    req.session.user = userToClient(user);
-    setFlash(req, 'success', `Welcome back, ${user.name}.`);
-    return res.redirect('/');
-  })
-);
-
-app.post('/logout', (req, res) => {
+app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
 /* ====================================================================== */
-/* APP SHELL                                                              */
+/* APP HANDLER — single handler for GET & POST /app                       */
 /* ====================================================================== */
 
-app.get(
-  '/',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    res.render('app', { user: req.session.user });
-  })
-);
+async function appHandler(req, res) {
+  try {
+    let success_msg = req.query.msg || null;
+    const page = req.query.page || 'dashboard';
+    const user = req.session.user;
 
-/* ====================================================================== */
-/* API: ME                                                                */
-/* ====================================================================== */
-
-app.get(
-  '/api/me',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const u = await User.findById(req.session.user.id);
-    if (!u) return res.status(404).json({ error: 'User not found' });
-    res.json({ user: userToClient(u) });
-  })
-);
-
-/* ====================================================================== */
-/* API: USERS  (admin)                                                    */
-/* ====================================================================== */
-
-app.get(
-  '/api/users',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const { role, q } = req.query;
-    const filter = {};
-    if (role && Object.values(ROLES).includes(role)) filter.role = role;
-    if (q) {
-      const re = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-      filter.$or = [{ name: re }, { email: re }, { rollNo: re }];
+    /* ---- DELETE via GET query params ---- */
+    if (req.query.delete && req.query.table && req.query.id) {
+      const { table, id } = req.query;
+      try {
+        if (table === 'courses') await Course.findByIdAndDelete(id);
+        else if (table === 'subjects') await Subject.findByIdAndDelete(id);
+        else if (table === 'staff' || table === 'students') await User.findByIdAndDelete(id);
+      } catch (delErr) {
+        console.error('Delete error:', delErr);
+      }
+      return res.redirect(`/app?page=${req.query.page || page}&msg=Record deleted successfully.`);
     }
-    const users = await User.find(filter).populate('course', 'name code').sort({ createdAt: -1 });
-    res.json({ users: users.map(userToClient) });
-  })
-);
 
-app.post(
-  '/api/users',
-  requireRole(ROLES.ADMIN),
-  asyncHandler(async (req, res) => {
-    const { name, email, password, role, rollNo, course, phone } = req.body;
-    if (!name || !email || !password || !role) {
-      return res.status(400).json({ error: 'name, email, password, role are required' });
+    /* ---- POST actions ---- */
+    if (req.method === 'POST') {
+      const action = req.body.action;
+
+      switch (action) {
+        case 'add_course': {
+          await Course.create({ name: req.body.name });
+          success_msg = 'Course added successfully.';
+          break;
+        }
+        case 'add_subject': {
+          await Subject.create({ name: req.body.name, course_id: req.body.course_id });
+          success_msg = 'Subject added successfully.';
+          break;
+        }
+        case 'add_staff': {
+          const staffData = { ...req.body, role: 'staff' };
+          delete staffData.action;
+          await User.create(staffData);
+          success_msg = 'Staff member added successfully.';
+          break;
+        }
+        case 'add_student': {
+          const studentData = { ...req.body, role: 'student' };
+          delete studentData.action;
+          await User.create(studentData);
+          success_msg = 'Student added successfully.';
+          break;
+        }
+        case 'save_attendance': {
+          const { date, course_id, subject_id, attendance } = req.body;
+          await Attendance.deleteMany({ date, subject_id, course_id });
+          if (attendance && typeof attendance === 'object') {
+            const keys = Object.keys(attendance);
+            for (const studentId of keys) {
+              await Attendance.create({
+                student_id: studentId,
+                subject_id,
+                course_id,
+                date,
+                status: attendance[studentId]
+              });
+            }
+          }
+          success_msg = 'Attendance saved successfully.';
+          break;
+        }
+        case 'save_scores': {
+          const { subject_id, score } = req.body;
+          if (score && typeof score === 'object') {
+            const keys = Object.keys(score);
+            for (const studentId of keys) {
+              if (score[studentId] !== '' && score[studentId] != null) {
+                await Score.findOneAndUpdate(
+                  { student_id: studentId, subject_id },
+                  { score: score[studentId] },
+                  { upsert: true, new: true }
+                );
+              }
+            }
+          }
+          success_msg = 'Scores saved successfully.';
+          break;
+        }
+        case 'apply_leave': {
+          await Leave.create({
+            user_id: user._id,
+            role: user.role,
+            date: req.body.date,
+            message: req.body.message
+          });
+          success_msg = 'Leave application submitted.';
+          break;
+        }
+        case 'update_leave': {
+          await Leave.findByIdAndUpdate(req.body.leave_id, { status: req.body.status });
+          success_msg = `Leave ${req.body.status.toLowerCase()}.`;
+          break;
+        }
+        case 'send_notification': {
+          await Notification.create({ message: req.body.message, type: req.body.type });
+          success_msg = 'Notification sent successfully.';
+          break;
+        }
+        case 'send_feedback': {
+          await Feedback.create({ student_id: user._id, message: req.body.message });
+          success_msg = 'Feedback submitted. Thank you!';
+          break;
+        }
+        default:
+          success_msg = 'Unknown action.';
+      }
+
+      return res.redirect(`/app?page=${page}&msg=${encodeURIComponent(success_msg)}`);
     }
-    if (!Object.values(ROLES).includes(role)) {
-      return res.status(400).json({ error: 'Invalid role' });
-    }
-    const exists = await User.findOne({ email: String(email).toLowerCase() });
-    if (exists) return res.status(409).json({ error: 'Email already in use' });
 
-    const passwordHash = await User.hashPassword(password);
-    const user = await User.create({
-      name,
-      email: String(email).toLowerCase(),
-      passwordHash,
-      role,
-      rollNo: rollNo || null,
-      course: course && isValidObjectId(course) ? course : null,
-      phone: phone || '',
-    });
-    res.status(201).json({ user: userToClient(user) });
-  })
-);
+    /* ---- GET: build data object ---- */
+    const data = {
+      user,
+      page,
+      success_msg,
+      fetched_students: [],
+      exam_students: [],
+      existing_scores: {},
+      existing_attendance: {},
+      fetch_date: null,
+      fetch_course: null,
+      fetch_subject: null,
+    };
 
-app.put(
-  '/api/users/:id',
-  requireRole(ROLES.ADMIN),
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    const { name, role, rollNo, course, phone, active, password } = req.body;
-    const update = {};
-    if (name) update.name = name;
-    if (role && Object.values(ROLES).includes(role)) update.role = role;
-    if (rollNo !== undefined) update.rollNo = rollNo || null;
-    if (course !== undefined) update.course = course && isValidObjectId(course) ? course : null;
-    if (phone !== undefined) update.phone = phone;
-    if (active !== undefined) update.active = !!active;
-    if (password) update.passwordHash = await User.hashPassword(password);
+    // Always fetch
+    data.courses = await Course.find();
+    data.subjects = await Subject.find().populate('course_id');
 
-    const user = await User.findByIdAndUpdate(req.params.id, update, { new: true });
-    if (!user) return res.status(404).json({ error: 'Not found' });
-    res.json({ user: userToClient(user) });
-  })
-);
-
-app.delete(
-  '/api/users/:id',
-  requireRole(ROLES.ADMIN),
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    if (String(req.params.id) === String(req.session.user.id)) {
-      return res.status(400).json({ error: 'You cannot delete your own account.' });
-    }
-    const user = await User.findByIdAndDelete(req.params.id);
-    if (!user) return res.status(404).json({ error: 'Not found' });
-    res.json({ ok: true });
-  })
-);
-
-/* ====================================================================== */
-/* API: COURSES                                                           */
-/* ====================================================================== */
-
-app.get(
-  '/api/courses',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const courses = await Course.find().sort({ name: 1 });
-    res.json({ courses });
-  })
-);
-
-app.post(
-  '/api/courses',
-  requireRole(ROLES.ADMIN),
-  asyncHandler(async (req, res) => {
-    const { name, code, description, durationYears } = req.body;
-    if (!name || !code) return res.status(400).json({ error: 'name and code are required' });
-    const course = await Course.create({
-      name,
-      code: String(code).toUpperCase(),
-      description: description || '',
-      durationYears: Number(durationYears) || 3,
-    });
-    res.status(201).json({ course });
-  })
-);
-
-app.put(
-  '/api/courses/:id',
-  requireRole(ROLES.ADMIN),
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    const { name, code, description, durationYears, active } = req.body;
-    const update = {};
-    if (name) update.name = name;
-    if (code) update.code = String(code).toUpperCase();
-    if (description !== undefined) update.description = description;
-    if (durationYears) update.durationYears = Number(durationYears);
-    if (active !== undefined) update.active = !!active;
-    const course = await Course.findByIdAndUpdate(req.params.id, update, { new: true });
-    if (!course) return res.status(404).json({ error: 'Not found' });
-    res.json({ course });
-  })
-);
-
-app.delete(
-  '/api/courses/:id',
-  requireRole(ROLES.ADMIN),
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    const course = await Course.findByIdAndDelete(req.params.id);
-    if (!course) return res.status(404).json({ error: 'Not found' });
-    res.json({ ok: true });
-  })
-);
-
-/* ====================================================================== */
-/* API: SUBJECTS                                                          */
-/* ====================================================================== */
-
-app.get(
-  '/api/subjects',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const filter = {};
-    if (req.query.course && isValidObjectId(req.query.course)) {
-      filter.course = req.query.course;
-    }
-    if (req.query.teacher && isValidObjectId(req.query.teacher)) {
-      filter.teacher = req.query.teacher;
-    }
-    const subjects = await Subject.find(filter)
-      .populate('course', 'name code')
-      .populate('teacher', 'name email')
-      .sort({ code: 1 });
-    res.json({ subjects });
-  })
-);
-
-app.post(
-  '/api/subjects',
-  requireRole(ROLES.ADMIN, ROLES.TEACHER),
-  asyncHandler(async (req, res) => {
-    const { name, code, course, teacher, credits, description } = req.body;
-    if (!name || !code || !course) {
-      return res.status(400).json({ error: 'name, code, course are required' });
-    }
-    if (!isValidObjectId(course)) return res.status(400).json({ error: 'Invalid course id' });
-    const subject = await Subject.create({
-      name,
-      code: String(code).toUpperCase(),
-      course,
-      teacher: teacher && isValidObjectId(teacher) ? teacher : null,
-      credits: Number(credits) || 3,
-      description: description || '',
-    });
-    res.status(201).json({ subject });
-  })
-);
-
-app.put(
-  '/api/subjects/:id',
-  requireRole(ROLES.ADMIN, ROLES.TEACHER),
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    const { name, code, course, teacher, credits, description } = req.body;
-    const update = {};
-    if (name) update.name = name;
-    if (code) update.code = String(code).toUpperCase();
-    if (course && isValidObjectId(course)) update.course = course;
-    if (teacher !== undefined) update.teacher = teacher && isValidObjectId(teacher) ? teacher : null;
-    if (credits) update.credits = Number(credits);
-    if (description !== undefined) update.description = description;
-    const subject = await Subject.findByIdAndUpdate(req.params.id, update, { new: true });
-    if (!subject) return res.status(404).json({ error: 'Not found' });
-    res.json({ subject });
-  })
-);
-
-app.delete(
-  '/api/subjects/:id',
-  requireRole(ROLES.ADMIN),
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    const subject = await Subject.findByIdAndDelete(req.params.id);
-    if (!subject) return res.status(404).json({ error: 'Not found' });
-    res.json({ ok: true });
-  })
-);
-
-/* ====================================================================== */
-/* API: ATTENDANCE                                                        */
-/* ====================================================================== */
-
-app.get(
-  '/api/attendance',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const me = req.session.user;
-    const filter = {};
-    if (req.query.subject && isValidObjectId(req.query.subject)) {
-      filter.subject = req.query.subject;
-    }
-    if (req.query.student && isValidObjectId(req.query.student)) {
-      filter.student = req.query.student;
-    }
-    if (req.query.from || req.query.to) {
-      filter.date = {};
-      if (req.query.from) filter.date.$gte = startOfDay(parseDate(req.query.from));
-      if (req.query.to) filter.date.$lte = endOfDay(parseDate(req.query.to));
-    }
-    if (me.role === ROLES.STUDENT) {
-      filter.student = me.id;
-    } else if (me.role === ROLES.TEACHER) {
-      const mySubjects = await Subject.find({ teacher: me.id }).select('_id');
-      const mySubjectIds = mySubjects.map((s) => s._id);
-      // Intersect with any subject filter already applied from query params
-      if (filter.subject) {
-        filter.subject = { $in: mySubjectIds.filter((id) => String(id) === String(filter.subject)) };
-      } else {
-        filter.subject = { $in: mySubjectIds };
+    /* ---- Page-specific queries ---- */
+    if (page === 'dashboard') {
+      data.total_students = await User.countDocuments({ role: 'student' });
+      data.total_staff = await User.countDocuments({ role: 'staff' });
+      data.total_courses = await Course.countDocuments();
+      data.total_subjects = await Subject.countDocuments();
+      data.att_count = await Attendance.countDocuments();
+      if (user.role === 'student') {
+        data.total_present = await Attendance.countDocuments({ student_id: user._id, status: 'Present' });
+        data.total_total = await Attendance.countDocuments({ student_id: user._id });
       }
     }
-    const records = await Attendance.find(filter)
-      .populate('student', 'name email rollNo')
-      .populate('subject', 'name code')
-      .sort({ date: -1 })
-      .limit(500);
-    res.json({ records });
-  })
-);
 
-app.post(
-  '/api/attendance',
-  requireRole(ROLES.ADMIN, ROLES.TEACHER),
-  asyncHandler(async (req, res) => {
-    const { student, subject, date, status, remarks } = req.body;
-    if (!student || !subject || !date || !status) {
-      return res.status(400).json({ error: 'student, subject, date, status required' });
+    if (page === 'manage_staff') {
+      data.staffs = await User.find({ role: 'staff' });
     }
-    if (!isValidObjectId(student) || !isValidObjectId(subject)) {
-      return res.status(400).json({ error: 'Invalid id' });
-    }
-    const record = await Attendance.findOneAndUpdate(
-      { student, subject, date: startOfDay(parseDate(date)) },
-      {
-        student,
-        subject,
-        date: startOfDay(parseDate(date)),
-        status,
-        remarks: remarks || '',
-        markedBy: req.session.user.id,
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-    res.status(201).json({ record });
-  })
-);
 
-app.delete(
-  '/api/attendance/:id',
-  requireRole(ROLES.ADMIN, ROLES.TEACHER),
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    const record = await Attendance.findByIdAndDelete(req.params.id);
-    if (!record) return res.status(404).json({ error: 'Not found' });
-    res.json({ ok: true });
-  })
-);
-
-/* ====================================================================== */
-/* API: SCORES                                                            */
-/* ====================================================================== */
-
-app.get(
-  '/api/scores',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const me = req.session.user;
-    const filter = {};
-    if (req.query.subject && isValidObjectId(req.query.subject)) {
-      filter.subject = req.query.subject;
+    if (page === 'manage_students') {
+      data.students = await User.find({ role: 'student' }).populate('course_id');
     }
-    if (me.role === ROLES.STUDENT) {
-      filter.student = me.id;
-    } else if (req.query.student && isValidObjectId(req.query.student)) {
-      filter.student = req.query.student;
-    }
-    if (me.role === ROLES.TEACHER) {
-      const mySubjects = await Subject.find({ teacher: me.id }).select('_id');
-      const mySubjectIds = mySubjects.map((s) => s._id);
-      // Intersect with any subject filter already applied from query params
-      if (filter.subject) {
-        filter.subject = { $in: mySubjectIds.filter((id) => String(id) === String(filter.subject)) };
-      } else {
-        filter.subject = { $in: mySubjectIds };
+
+    if (page === 'manage_attendance' || page === 'take_attendance') {
+      if (req.query.fetch_course && req.query.fetch_date && req.query.fetch_subject) {
+        data.fetch_date = req.query.fetch_date;
+        data.fetch_course = req.query.fetch_course;
+        data.fetch_subject = req.query.fetch_subject;
+        data.fetched_students = await User.find({ role: 'student', course_id: req.query.fetch_course });
+        const existingAtt = await Attendance.find({
+          date: req.query.fetch_date,
+          subject_id: req.query.fetch_subject,
+          course_id: req.query.fetch_course
+        });
+        const attMap = {};
+        existingAtt.forEach((a) => { attMap[a.student_id.toString()] = a.status; });
+        data.existing_attendance = attMap;
       }
     }
-    const scores = await Score.find(filter)
-      .populate('student', 'name email rollNo')
-      .populate('subject', 'name code')
-      .sort({ createdAt: -1 })
-      .limit(500);
-    res.json({ scores });
-  })
-);
 
-app.post(
-  '/api/scores',
-  requireRole(ROLES.ADMIN, ROLES.TEACHER),
-  asyncHandler(async (req, res) => {
-    const { student, subject, examType, marksObtained, totalMarks, remarks } = req.body;
-    if (!student || !subject || !examType || marksObtained == null || !totalMarks) {
-      return res.status(400).json({ error: 'student, subject, examType, marksObtained, totalMarks required' });
-    }
-    if (!isValidObjectId(student) || !isValidObjectId(subject)) {
-      return res.status(400).json({ error: 'Invalid id' });
-    }
-    const score = await Score.create({
-      student,
-      subject,
-      examType,
-      marksObtained: Number(marksObtained),
-      totalMarks: Number(totalMarks),
-      remarks: remarks || '',
-      recordedBy: req.session.user.id,
-    });
-    res.status(201).json({ score });
-  })
-);
-
-app.put(
-  '/api/scores/:id',
-  requireRole(ROLES.ADMIN, ROLES.TEACHER),
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    const { examType, marksObtained, totalMarks, remarks } = req.body;
-    const update = {};
-    if (examType) update.examType = examType;
-    if (marksObtained != null) update.marksObtained = Number(marksObtained);
-    if (totalMarks) update.totalMarks = Number(totalMarks);
-    if (remarks !== undefined) update.remarks = remarks;
-    const score = await Score.findByIdAndUpdate(req.params.id, update, { new: true });
-    if (!score) return res.status(404).json({ error: 'Not found' });
-    res.json({ score });
-  })
-);
-
-app.delete(
-  '/api/scores/:id',
-  requireRole(ROLES.ADMIN, ROLES.TEACHER),
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    const score = await Score.findByIdAndDelete(req.params.id);
-    if (!score) return res.status(404).json({ error: 'Not found' });
-    res.json({ ok: true });
-  })
-);
-
-/* ====================================================================== */
-/* API: LEAVES                                                            */
-/* ====================================================================== */
-
-app.get(
-  '/api/leaves',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const me = req.session.user;
-    const filter = {};
-    if (req.query.status) filter.status = req.query.status;
-    if (me.role === ROLES.STUDENT) {
-      filter.student = me.id;
-    } else if (req.query.student && isValidObjectId(req.query.student)) {
-      filter.student = req.query.student;
-    }
-    const leaves = await Leave.find(filter)
-      .populate('student', 'name email rollNo')
-      .populate('decidedBy', 'name')
-      .sort({ createdAt: -1 })
-      .limit(500);
-    res.json({ leaves });
-  })
-);
-
-app.post(
-  '/api/leaves',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const me = req.session.user;
-    const studentId =
-      me.role === ROLES.STUDENT ? me.id : req.body.student;
-    const { fromDate, toDate, reason } = req.body;
-    if (!studentId || !fromDate || !toDate || !reason) {
-      return res.status(400).json({ error: 'student, fromDate, toDate, reason required' });
-    }
-    if (!isValidObjectId(studentId)) {
-      return res.status(400).json({ error: 'Invalid student id' });
-    }
-    const leave = await Leave.create({
-      student: studentId,
-      fromDate: parseDate(fromDate),
-      toDate: parseDate(toDate),
-      reason,
-    });
-    res.status(201).json({ leave });
-  })
-);
-
-app.put(
-  '/api/leaves/:id',
-  requireRole(ROLES.ADMIN, ROLES.TEACHER),
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    const { status, decisionNote } = req.body;
-    if (!['approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status. Must be approved or rejected.' });
-    }
-    const update = {
-      status,
-      decisionNote: decisionNote || '',
-      decidedBy: req.session.user.id,
-      decidedAt: new Date(),
-    };
-    const leave = await Leave.findByIdAndUpdate(req.params.id, update, { new: true });
-    if (!leave) return res.status(404).json({ error: 'Not found' });
-    res.json({ leave });
-  })
-);
-
-app.delete(
-  '/api/leaves/:id',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    const leave = await Leave.findById(req.params.id);
-    if (!leave) return res.status(404).json({ error: 'Not found' });
-    const me = req.session.user;
-    if (me.role !== ROLES.ADMIN && String(leave.student) !== String(me.id)) {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-    if (leave.status !== 'pending' && me.role !== ROLES.ADMIN) {
-      return res.status(400).json({ error: 'Cannot delete a decided leave request' });
-    }
-    await leave.deleteOne();
-    res.json({ ok: true });
-  })
-);
-
-/* ====================================================================== */
-/* API: NOTIFICATIONS                                                     */
-/* ====================================================================== */
-
-app.get(
-  '/api/notifications',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const me = req.session.user;
-    const matchAudience = {
-      $or: [
-        { audience: 'all' },
-        { audience: 'admins', role: ROLES.ADMIN },
-        { audience: 'teachers', role: ROLES.TEACHER },
-        { audience: 'students', role: ROLES.STUDENT },
-        { audience: 'role', role: me.role },
-      ],
-    };
-    const items = await Notification.find(matchAudience)
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .populate('createdBy', 'name');
-    const unread = items.filter((n) => !n.reads.some((r) => String(r) === String(me.id))).length;
-    res.json({ notifications: items, unread });
-  })
-);
-
-app.post(
-  '/api/notifications',
-  requireRole(ROLES.ADMIN, ROLES.TEACHER),
-  asyncHandler(async (req, res) => {
-    const { title, body, audience, role } = req.body;
-    if (!title) return res.status(400).json({ error: 'title is required' });
-    const allowed = ['all', 'admins', 'teachers', 'students', 'role'];
-    const aud = allowed.includes(audience) ? audience : 'all';
-    const notif = await Notification.create({
-      title,
-      body: body || '',
-      audience: aud,
-      role: aud === 'role' && Object.values(ROLES).includes(role) ? role : null,
-      createdBy: req.session.user.id,
-    });
-    res.status(201).json({ notification: notif });
-  })
-);
-
-app.delete(
-  '/api/notifications/:id',
-  requireRole(ROLES.ADMIN, ROLES.TEACHER),
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    const n = await Notification.findByIdAndDelete(req.params.id);
-    if (!n) return res.status(404).json({ error: 'Not found' });
-    res.json({ ok: true });
-  })
-);
-
-app.post(
-  '/api/notifications/:id/read',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    await Notification.updateOne(
-      { _id: req.params.id },
-      { $addToSet: { reads: req.session.user.id } }
-    );
-    res.json({ ok: true });
-  })
-);
-
-/* ====================================================================== */
-/* API: FEEDBACK                                                          */
-/* ====================================================================== */
-
-app.get(
-  '/api/feedback',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const me = req.session.user;
-    const filter = {};
-    if (me.role === ROLES.STUDENT) filter.author = me.id;
-    if (req.query.status) filter.status = req.query.status;
-    const items = await Feedback.find(filter)
-      .populate('author', 'name email role')
-      .populate('respondedBy', 'name')
-      .sort({ createdAt: -1 })
-      .limit(500);
-    res.json({ feedback: items });
-  })
-);
-
-app.post(
-  '/api/feedback',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const { subject, body, category, rating } = req.body;
-    if (!subject || !body) return res.status(400).json({ error: 'subject and body required' });
-    const allowedCats = ['bug', 'feature', 'content', 'teacher', 'general'];
-    const fb = await Feedback.create({
-      author: req.session.user.id,
-      subject,
-      body,
-      category: allowedCats.includes(category) ? category : 'general',
-      rating: rating ? Math.max(1, Math.min(5, Number(rating))) : null,
-    });
-    res.status(201).json({ feedback: fb });
-  })
-);
-
-app.put(
-  '/api/feedback/:id',
-  requireRole(ROLES.ADMIN, ROLES.TEACHER),
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    const { status, response } = req.body;
-    const allowed = ['open', 'reviewed', 'resolved', 'dismissed'];
-    const update = {};
-    if (allowed.includes(status)) {
-      update.status = status;
-      update.respondedBy = req.session.user.id;
-    }
-    if (response !== undefined) {
-      update.response = response;
-      update.respondedBy = req.session.user.id;
-    }
-    const fb = await Feedback.findByIdAndUpdate(req.params.id, update, { new: true });
-    if (!fb) return res.status(404).json({ error: 'Not found' });
-    res.json({ feedback: fb });
-  })
-);
-
-app.delete(
-  '/api/feedback/:id',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
-    const fb = await Feedback.findById(req.params.id);
-    if (!fb) return res.status(404).json({ error: 'Not found' });
-    const me = req.session.user;
-    if (me.role !== ROLES.ADMIN && String(fb.author) !== String(me.id)) {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-    await fb.deleteOne();
-    res.json({ ok: true });
-  })
-);
-
-/* ====================================================================== */
-/* API: DASHBOARD                                                         */
-/* ====================================================================== */
-
-app.get(
-  '/api/dashboard',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const me = req.session.user;
-    const today = startOfDay();
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-
-    const baseAttendance = { student: me.id, date: { $gte: sevenDaysAgo, $lte: endOfDay() } };
-
-    const [
-      userCount,
-      studentCount,
-      teacherCount,
-      courseCount,
-      subjectCount,
-      pendingLeaves,
-      openFeedback,
-      totalNotifications,
-    ] = await Promise.all([
-      User.countDocuments({}),
-      User.countDocuments({ role: ROLES.STUDENT }),
-      User.countDocuments({ role: ROLES.TEACHER }),
-      Course.countDocuments({}),
-      Subject.countDocuments({}),
-      Leave.countDocuments({ status: 'pending' }),
-      Feedback.countDocuments({ status: 'open' }),
-      Notification.countDocuments({}),
-    ]);
-
-    let myAttendance = [];
-    let myScores = [];
-    let myLeaves = [];
-
-    if (me.role === ROLES.STUDENT) {
-      myAttendance = await Attendance.find(baseAttendance)
-        .populate('subject', 'name code')
-        .sort({ date: 1 });
-      myScores = await Score.find({ student: me.id })
-        .populate('subject', 'name code')
-        .sort({ createdAt: -1 })
-        .limit(20);
-      myLeaves = await Leave.find({ student: me.id }).sort({ createdAt: -1 }).limit(20);
-    } else if (me.role === ROLES.TEACHER) {
-      const mySubjects = await Subject.find({ teacher: me.id }).select('_id');
-      myAttendance = await Attendance.find({
-        subject: { $in: mySubjects.map((s) => s._id) },
-        date: { $gte: sevenDaysAgo, $lte: endOfDay() },
-      })
-        .populate('subject', 'name code')
-        .populate('student', 'name rollNo');
-      myScores = await Score.find({ subject: { $in: mySubjects.map((s) => s._id) } })
-        .populate('subject', 'name code')
-        .populate('student', 'name rollNo')
-        .sort({ createdAt: -1 })
-        .limit(20);
+    if (page === 'manage_exams') {
+      if (req.query.fetch_course && req.query.fetch_subject) {
+        data.fetch_course = req.query.fetch_course;
+        data.fetch_subject = req.query.fetch_subject;
+        data.exam_students = await User.find({ role: 'student', course_id: req.query.fetch_course });
+        const existingScores = await Score.find({ subject_id: req.query.fetch_subject });
+        const scoreMap = {};
+        existingScores.forEach((s) => { scoreMap[s.student_id.toString()] = s.score; });
+        data.existing_scores = scoreMap;
+      }
     }
 
-    const attendanceByDay = {};
-    for (let i = 0; i < 7; i += 1) {
-      const d = new Date(sevenDaysAgo);
-      d.setDate(d.getDate() + i);
-      const key = d.toISOString().slice(0, 10);
-      attendanceByDay[key] = { present: 0, absent: 0, late: 0, excused: 0 };
+    if (page === 'notifications' && user.role === 'admin') {
+      data.leaves = await Leave.find().populate('user_id').sort({ created_at: -1 });
     }
-    for (const a of myAttendance) {
-      const key = new Date(a.date).toISOString().slice(0, 10);
-      if (attendanceByDay[key]) attendanceByDay[key][a.status] += 1;
+
+    if (page === 'staff_notifs' || page === 'student_notifs') {
+      const roleType = user.role === 'staff' ? 'staff' : 'student';
+      data.notifs = await Notification.find({ type: roleType }).sort({ created_at: -1 });
     }
-    const attendanceChart = Object.entries(attendanceByDay).map(([day, v]) => ({ day, ...v }));
 
-    const scoreBySubject = {};
-    for (const s of myScores) {
-      const name = s.subject ? s.subject.name : 'Unknown';
-      if (!scoreBySubject[name]) scoreBySubject[name] = { total: 0, count: 0 };
-      scoreBySubject[name].total += (s.marksObtained / s.totalMarks) * 100;
-      scoreBySubject[name].count += 1;
+    if (page === 'apply_leave') {
+      data.my_leaves = await Leave.find({ user_id: user._id }).sort({ created_at: -1 });
     }
-    const scoreChart = Object.entries(scoreBySubject).map(([subject, v]) => ({
-      subject,
-      average: v.count ? Math.round((v.total / v.count) * 10) / 10 : 0,
-    }));
 
-    res.json({
-      counts: {
-        users: userCount,
-        students: studentCount,
-        teachers: teacherCount,
-        courses: courseCount,
-        subjects: subjectCount,
-        pendingLeaves,
-        openFeedback,
-        notifications: totalNotifications,
-      },
-      attendanceChart,
-      scoreChart,
-      recentAttendance: myAttendance.slice(-10).reverse(),
-      recentScores: myScores.slice(0, 6),
-      recentLeaves: myLeaves.slice(0, 6),
-    });
-  })
-);
+    if (page === 'view_attendance' && user.role === 'staff') {
+      data.logs = await Attendance.find()
+        .populate('student_id')
+        .populate('subject_id')
+        .sort({ date: -1 })
+        .limit(50);
+    }
 
-/* ====================================================================== */
-/* HEALTH                                                                 */
-/* ====================================================================== */
+    if (page === 'my_attendance' && user.role === 'student') {
+      data.my_att = await Attendance.find({ student_id: user._id })
+        .populate('subject_id')
+        .sort({ date: -1 });
+    }
 
-app.get('/healthz', (req, res) => res.json({ ok: true, uptime: process.uptime() }));
+    if (page === 'exam_results' && user.role === 'student') {
+      data.scores = await Score.find({ student_id: user._id }).populate('subject_id');
+    }
 
-/* ====================================================================== */
-/* ERROR HANDLER                                                          */
-/* ====================================================================== */
+    res.render('app', data);
 
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  if (req.accepts('html') && !req.path.startsWith('/api/')) {
-    setFlash(req, 'danger', 'Something went wrong. Please try again.');
-    return res.redirect(req.session.user ? '/' : '/login');
+  } catch (err) {
+    console.error('appHandler error:', err);
+    res.status(500).send('An error occurred while loading the page.');
   }
-  res.status(err.status || 500).json({ error: err.message || 'Server error' });
-});
+}
+
+app.get('/app', requireAuth, appHandler);
+app.post('/app', requireAuth, appHandler);
+
+/* ====================================================================== */
+/* 404 CATCH-ALL                                                          */
+/* ====================================================================== */
 
 app.use((req, res) => {
-  if (req.accepts('html')) return res.status(404).render('login', { flash: { type: 'danger', message: 'Page not found' } });
-  res.status(404).json({ error: 'Not found' });
+  res.status(404).send(`Route Not Found: ${req.method} ${req.url}`);
 });
 
 /* ====================================================================== */
-/* START                                                                  */
+/* START SERVER                                                           */
 /* ====================================================================== */
 
-app.listen(PORT, () => {
-  console.log(`SMS server listening on :${PORT}`);
-  seed().catch((e) => console.error('Seed error:', e));
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`SMS server running on http://0.0.0.0:${PORT}`);
 });
