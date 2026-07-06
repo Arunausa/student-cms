@@ -928,8 +928,8 @@
     }
 
     function subjectForm(s) {
-      const courseOpts = CACHE.courses.map((c) => `<option value="${c._id}" ${s && s.course && s.course._id === c._id ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
-      const teacherOpts = '<option value="">—</option>' + CACHE.users.filter((u) => u.role === 'teacher').map((u) => `<option value="${u._id}" ${s && s.teacher && s.teacher._id === u._id ? 'selected' : ''}>${esc(u.name)}</option>`).join('');
+      const courseOpts = CACHE.courses.map((c) => `<option value="${c._id}" ${s && s.course && String(s.course._id) === String(c._id) ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+      const teacherOpts = '<option value="">—</option>' + CACHE.users.filter((u) => u.role === 'teacher').map((u) => `<option value="${u._id}" ${s && s.teacher && String(s.teacher._id) === String(u._id) ? 'selected' : ''}>${esc(u.name)}</option>`).join('');
       return `
         <div class="row g-3">
           <div class="col-md-4"><label class="form-label">Code</label><input class="form-control" name="code" required value="${esc(s ? s.code : '')}" /></div>
@@ -1020,7 +1020,7 @@
     }
 
     function attendanceForm(r) {
-      const studentOpts = '<option value="">—</option>' + CACHE.users.filter((u) => u.role === 'student').map((u) => `<option value="${u._id}" ${r && r.student && r.student._id === u._id ? 'selected' : ''}>${esc(u.name)}</option>`).join('');
+      const studentOpts = '<option value="">—</option>' + CACHE.users.filter((u) => u.role === 'student').map((u) => `<option value="${u._id}" ${r && r.student && String(r.student._id) === String(u._id) ? 'selected' : ''}>${esc(u.name)}</option>`).join('');
       const subjectOpts = CACHE.subjects.map((s) => `<option value="${s._id}" ${r && r.subject && r.subject._id === s._id ? 'selected' : ''}>${esc(s.code)} · ${esc(s.name)}</option>`).join('');
       const today = r ? new Date(r.date).toISOString().slice(0, 10) : TODAY;
       return `
@@ -1065,8 +1065,8 @@
     }
 
     function scoreForm(s) {
-      const studentOpts = CACHE.users.filter((u) => u.role === 'student').map((u) => `<option value="${u._id}" ${s && s.student && s.student._id === u._id ? 'selected' : ''}>${esc(u.name)}</option>`).join('');
-      const subjectOpts = CACHE.subjects.map((sub) => `<option value="${sub._id}" ${s && s.subject && s.subject._id === sub._id ? 'selected' : ''}>${esc(sub.code)} · ${esc(sub.name)}</option>`).join('');
+      const studentOpts = CACHE.users.filter((u) => u.role === 'student').map((u) => `<option value="${u._id}" ${s && s.student && String(s.student._id) === String(u._id) ? 'selected' : ''}>${esc(u.name)}</option>`).join('');
+      const subjectOpts = CACHE.subjects.map((sub) => `<option value="${sub._id}" ${s && s.subject && String(s.subject._id) === String(sub._id) ? 'selected' : ''}>${esc(sub.code)} · ${esc(sub.name)}</option>`).join('');
       return `
         <div class="row g-3">
           <div class="col-md-6"><label class="form-label">Student</label><select class="form-select" name="student" required>${studentOpts}</select></div>
@@ -1101,7 +1101,7 @@
                 <button class="btn btn-sm btn-outline-success me-1" data-action="decide" data-id="${l._id}" data-decision="approved"><i class="bi bi-check2"></i></button>
                 <button class="btn btn-sm btn-outline-danger" data-action="decide" data-id="${l._id}" data-decision="rejected"><i class="bi bi-x"></i></button>
               ` : ''}
-              ${(can('admin') || l.student === CURRENT_USER.id) && l.status === 'pending' ? `
+              ${(can('admin') || (l.student && String(l.student._id) === String(CURRENT_USER.id))) && l.status === 'pending' ? `
                 <button class="btn btn-sm btn-outline-light ms-1" data-action="delete" data-entity="leave" data-id="${l._id}"><i class="bi bi-trash"></i></button>
               ` : ''}
             </td>
@@ -1298,17 +1298,18 @@
         } else if (action === 'new' && entity === 'attendance') {
           openModal('Mark attendance', attendanceForm(), async (data) => { await api('/api/attendance', { method: 'POST', body: data }); toast('Attendance saved'); loadAttendance(); entityModal.hide(); });
         } else if (action === 'edit' && entity === 'attendance') {
-          // fetch the single record by filter
-          const d = await api('/api/attendance');
-          const r = (d.records || []).find((x) => x._id === id);
-          if (!r) { toast('Record not found', 'danger'); return; }
-          openModal('Edit attendance', attendanceForm(r), async (data) => { await api('/api/attendance', { method: 'POST', body: data }); toast('Attendance updated'); loadAttendance(); entityModal.hide(); });
+          const r = CACHE.attendance ? CACHE.attendance.find((x) => x._id === id) : null;
+          // Fetch the record directly since we may not have it cached with full population
+          const d = await api('/api/attendance?limit=500');
+          const rec = (d.records || []).find((x) => x._id === id);
+          if (!rec) { toast('Record not found', 'danger'); return; }
+          openModal('Edit attendance', attendanceForm(rec), async (data) => { await api('/api/attendance', { method: 'POST', body: data }); toast('Attendance updated'); loadAttendance(); entityModal.hide(); });
         } else if (action === 'delete' && entity === 'attendance') {
           if (await confirmAction('Delete this record?')) { await api('/api/attendance/' + id, { method: 'DELETE' }); toast('Record deleted'); loadAttendance(); }
         } else if (action === 'new' && entity === 'score') {
           openModal('Record score', scoreForm(), async (data) => { await api('/api/scores', { method: 'POST', body: data }); toast('Score saved'); loadScores(); entityModal.hide(); });
         } else if (action === 'edit' && entity === 'score') {
-          const d = await api('/api/scores');
+          const d = await api('/api/scores?limit=500');
           const s = (d.scores || []).find((x) => x._id === id);
           if (!s) { toast('Score not found', 'danger'); return; }
           openModal('Edit score', scoreForm(s), async (data) => { await api('/api/scores/' + id, { method: 'PUT', body: data }); toast('Score updated'); loadScores(); entityModal.hide(); });
@@ -1330,7 +1331,7 @@
         } else if (action === 'new' && entity === 'feedback') {
           openModal('Submit feedback', feedbackForm(), async (data) => { await api('/api/feedback', { method: 'POST', body: data }); toast('Feedback submitted'); loadFeedback(); entityModal.hide(); });
         } else if (action === 'respond') {
-          const d = await api('/api/feedback');
+          const d = await api('/api/feedback?limit=500');
           const f = (d.feedback || []).find((x) => x._id === id);
           if (!f) { toast('Feedback not found', 'danger'); return; }
           openModal('Respond to feedback', feedbackRespondForm(f), async (data) => { await api('/api/feedback/' + id, { method: 'PUT', body: data }); toast('Response saved'); loadFeedback(); entityModal.hide(); });

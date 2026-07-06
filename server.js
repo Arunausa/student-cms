@@ -188,7 +188,7 @@ const notificationSchema = new Schema(
       default: 'all',
       index: true,
     },
-    role: { type: String, enum: [...Object.values(ROLES), null], default: null },
+    role: { type: String, enum: Object.values(ROLES), default: null },
     title: { type: String, required: true, trim: true, maxlength: 140 },
     body: { type: String, default: '' },
     createdBy: { type: Types.ObjectId, ref: 'User', required: true },
@@ -487,7 +487,7 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
   handler: (req, res) => {
     setFlash(req, 'danger', 'Too many login attempts. Please try again later.');
-    return res.redirect('/login');
+    req.session.save(() => res.redirect('/login'));
   },
 });
 
@@ -554,6 +554,7 @@ app.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     const u = await User.findById(req.session.user.id);
+    if (!u) return res.status(404).json({ error: 'User not found' });
     res.json({ user: userToClient(u) });
   })
 );
@@ -798,7 +799,13 @@ app.get(
       filter.student = me.id;
     } else if (me.role === ROLES.TEACHER) {
       const mySubjects = await Subject.find({ teacher: me.id }).select('_id');
-      filter.subject = { $in: mySubjects.map((s) => s._id) };
+      const mySubjectIds = mySubjects.map((s) => s._id);
+      // Intersect with any subject filter already applied from query params
+      if (filter.subject) {
+        filter.subject = { $in: mySubjectIds.filter((id) => String(id) === String(filter.subject)) };
+      } else {
+        filter.subject = { $in: mySubjectIds };
+      }
     }
     const records = await Attendance.find(filter)
       .populate('student', 'name email rollNo')
@@ -864,9 +871,16 @@ app.get(
       filter.student = me.id;
     } else if (req.query.student && isValidObjectId(req.query.student)) {
       filter.student = req.query.student;
-    } else if (me.role === ROLES.TEACHER) {
+    }
+    if (me.role === ROLES.TEACHER) {
       const mySubjects = await Subject.find({ teacher: me.id }).select('_id');
-      filter.subject = { $in: mySubjects.map((s) => s._id) };
+      const mySubjectIds = mySubjects.map((s) => s._id);
+      // Intersect with any subject filter already applied from query params
+      if (filter.subject) {
+        filter.subject = { $in: mySubjectIds.filter((id) => String(id) === String(filter.subject)) };
+      } else {
+        filter.subject = { $in: mySubjectIds };
+      }
     }
     const scores = await Score.find(filter)
       .populate('student', 'name email rollNo')
@@ -984,8 +998,8 @@ app.put(
   asyncHandler(async (req, res) => {
     if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid id' });
     const { status, decisionNote } = req.body;
-    if (!['pending', 'approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status. Must be approved or rejected.' });
     }
     const update = {
       status,
