@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard · Student Management System</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    rel="stylesheet"
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #111a2e;
+      --panel-2: #16223b;
+      --line: #1f2c48;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --brand: #6366f1;
+      --brand-2: #8b5cf6;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #0ea5e9;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background:
+        radial-gradient(900px 600px at 100% 0%, rgba(99,102,241,.12), transparent 60%),
+        radial-gradient(700px 500px at 0% 100%, rgba(139,92,246,.10), transparent 60%),
+        var(--bg);
+      color: var(--text);
+      margin: 0;
+      min-height: 100vh;
+    }
+    a { color: #c7d2fe; }
+    .text-muted-2 { color: var(--muted) !important; }
+    .card-soft {
+      background: linear-gradient(180deg, rgba(22,34,59,.95), rgba(17,26,46,.95));
+      border: 1px solid var(--line);
+      border-radius: 16px;
+    }
+    .card-soft .card-header {
+      background: transparent;
+      border-bottom: 1px solid var(--line);
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+    .table {
+      --bs-table-bg: transparent;
+      --bs-table-color: var(--text);
+      --bs-table-striped-color: var(--text);
+      --bs-table-striped-bg: rgba(255,255,255,.02);
+      --bs-table-hover-color: var(--text);
+      --bs-table-hover-bg: rgba(99,102,241,.08);
+      --bs-table-border-color: var(--line);
+      color: var(--text);
+    }
+    .table thead th { color: #94a3b8; font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    .form-control, .form-select {
+      background: rgba(11,18,32,.7);
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+    .form-control:focus, .form-select:focus {
+      background: rgba(11,18,32,.85);
+      border-color: #6366f1;
+      color: var(--text);
+      box-shadow: 0 0 0 .2rem rgba(99,102,241,.2);
+    }
+    .form-control::placeholder { color: #64748b; }
+    .form-label { color: #cbd5e1; font-size: .85rem; font-weight: 500; }
+    .modal-content { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
+    .modal-header, .modal-footer { border-color: var(--line); }
+    .btn-close { filter: invert(1) grayscale(100%) brightness(200%); }
+
+    .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; }
+    .btn-primary:hover { background: linear-gradient(135deg, #5558e6, #7c4fe0); }
+    .btn-outline-light { border-color: var(--line); color: var(--text); }
+    .btn-outline-light:hover { background: var(--panel-2); color: var(--text); border-color: var(--line); }
+
+    .layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 991.98px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 260px; transform: translateX(-100%); transition: transform .25s; z-index: 1040; }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1030; display: none; }
+      .sidebar.open + .sidebar-backdrop { display: block; }
+    }
+    .sidebar {
+      background: linear-gradient(180deg, #0e1830, #0b1220);
+      border-right: 1px solid var(--line);
+      padding: 1.25rem 1rem;
+      display: flex; flex-direction: column;
+    }
+    .sidebar .brand {
+      display: flex; align-items: center; gap: .65rem;
+      font-weight: 800; color: #f8fafc; margin-bottom: 1.5rem;
+    }
+    .sidebar .brand .logo {
+      width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff;
+    }
+    .nav-section { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: #64748b; padding: 1rem .8rem .35rem; }
+    .nav-link {
+      display: flex; align-items: center; gap: .7rem;
+      padding: .6rem .8rem; border-radius: 10px;
+      color: #cbd5e1; font-weight: 500;
+    }
+    .nav-link:hover { background: rgba(99,102,241,.10); color: #fff; }
+    .nav-link.active { background: linear-gradient(135deg, rgba(99,102,241,.25), rgba(139,92,246,.18)); color: #fff; border: 1px solid rgba(99,102,241,.35); }
+    .nav-link i { font-size: 1.05rem; width: 20px; text-align: center; }
+    .sidebar-foot { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--line); }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(11,18,32,.85);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+      padding: .85rem 1.25rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .content { padding: 1.25rem; }
+
+    .stat-tile {
+      background: linear-gradient(135deg, rgba(99,102,241,.15), rgba(139,92,246,.10));
+      border: 1px solid var(--line);
+      border-radius: 16px; padding: 1.1rem 1.2rem;
+    }
+    .stat-tile .label { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-tile .value { font-size: 1.7rem; font-weight: 800; color: #f8fafc; }
+    .stat-tile .icon { font-size: 1.5rem; opacity: .85; }
+    .stat-tile.primary { background: linear-gradient(135deg, rgba(99,102,241,.25), rgba(139,92,246,.10)); }
+    .stat-tile.success { background: linear-gradient(135deg, rgba(16,185,129,.20), rgba(16,185,129,.05)); }
+    .stat-tile.warning { background: linear-gradient(135deg, rgba(245,158,11,.20), rgba(245,158,11,.05)); }
+    .stat-tile.danger  { background: linear-gradient(135deg, rgba(239,68,68,.20), rgba(239,68,68,.05)); }
+    .stat-tile.info    { background: linear-gradient(135deg, rgba(14,165,233,.20), rgba(14,165,233,.05)); }
+    .stat-tile.purple  { background: linear-gradient(135deg, rgba(168,85,247,.22), rgba(168,85,247,.05)); }
+
+    .badge.bg-present { background: rgba(16,185,129,.18); color: #34d399; }
+    .badge.bg-absent  { background: rgba(239,68,68,.18);  color: #f87171; }
+    .badge.bg-late    { background: rgba(245,158,11,.18); color: #fbbf24; }
+    .badge.bg-excused { background: rgba(14,165,233,.18); color: #38bdf8; }
+    .badge.bg-pending { background: rgba(245,158,11,.18); color: #fbbf24; }
+    .badge.bg-approved{ background: rgba(16,185,129,.18); color: #34d399; }
+    .badge.bg-rejected{ background: rgba(239,68,68,.18);  color: #f87171; }
+    .badge.bg-open    { background: rgba(14,165,233,.18); color: #38bdf8; }
+    .badge.bg-resolved{ background: rgba(16,185,129,.18); color: #34d399; }
+    .badge.bg-reviewed{ background: rgba(168,85,247,.18); color: #c084fc; }
+    .badge.bg-dismissed{background: rgba(148,163,184,.18);color: #cbd5e1; }
+
+    .toast-container { z-index: 1080; }
+    .empty {
+      text-align: center; padding: 2.5rem 1rem; color: var(--muted);
+    }
+    .empty i { font-size: 2.5rem; opacity: .5; }
+
+    .chart-shell { position: relative; height: 260px; }
+    .scrollable { max-height: 420px; overflow-y: auto; }
+
+    .table thead.sticky th { position: sticky; top: 0; background: var(--panel); z-index: 2; }
+
+    .role-chip {
+      display: inline-block; font-size: .7rem; padding: 2px 8px; border-radius: 999px;
+      background: rgba(99,102,241,.2); color: #c7d2fe; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .role-chip.teacher { background: rgba(16,185,129,.2); color: #6ee7b7; }
+    .role-chip.student { background: rgba(245,158,11,.2); color: #fcd34d; }
+    .role-chip.admin   { background: rgba(239,68,68,.2); color: #fca5a5; }
+
+    .notif-dot {
+      position: absolute; top: 4px; right: 6px;
+      width: 8px; height: 8px; background: #ef4444; border-radius: 50%;
+    }
+    .dropdown-menu { background: var(--panel); border: 1px solid var(--line); color: var(--text); }
+    .dropdown-item { color: var(--text); }
+    .dropdown-item:hover { background: var(--panel-2); color: #fff; }
+    .dropdown-divider { border-color: var(--line); }
+
+    .section-page { display: none; }
+    .section-page.active { display: block; }
+
+    .list-group-item {
+      background: var(--panel-2);
+      border-color: var(--line);
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <span class="logo"><i class="bi bi-mortarboard-fill"></i></span>
+        <span>SMS</span>
+      </div>
+
+      <div class="nav-section">Main</div>
+      <a class="nav-link active" data-section="dashboard" href="#">
+        <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+      </a>
+
+      <div class="nav-section">Academics</div>
+      <a class="nav-link" data-section="courses" href="#">
+        <i class="bi bi-collection"></i><span>Courses</span>
+      </a>
+      <a class="nav-link" data-section="subjects" href="#">
+        <i class="bi bi-book"></i><span>Subjects</span>
+      </a>
+      <a class="nav-link" data-section="attendance" href="#">
+        <i class="bi bi-calendar-check"></i><span>Attendance</span>
+      </a>
+      <a class="nav-link" data-section="scores" href="#">
+        <i class="bi bi-bar-chart"></i><span>Scores</span>
+      </a>
+
+      <div class="nav-section">People</div>
+      <a class="nav-link" data-section="users" href="#">
+        <i class="bi bi-people"></i><span>Users</span>
+      </a>
+
+      <div class="nav-section">Engagement</div>
+      <a class="nav-link" data-section="leaves" href="#">
+        <i class="bi bi-airplane"></i><span>Leaves</span>
+      </a>
+      <a class="nav-link" data-section="notifications" href="#">
+        <i class="bi bi-bell"></i><span>Notifications</span>
+      </a>
+      <a class="nav-link" data-section="feedback" href="#">
+        <i class="bi bi-chat-square-text"></i><span>Feedback</span>
+      </a>
+
+      <div class="sidebar-foot">
+        <div class="d-flex align-items-center gap-2 px-2 py-2">
+          <div
+            class="rounded-circle d-flex align-items-center justify-content-center"
+            style="width:36px;height:36px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:700;"
+          ><%= (user.name || 'U').charAt(0).toUpperCase() %></div>
+          <div class="flex-grow-1">
+            <div class="fw-semibold small" style="color:#f1f5f9;"><%= user.name %></div>
+            <span class="role-chip <%= user.role %>"><%= user.role %></span>
+          </div>
+          <form method="POST" action="/logout" class="m-0">
+            <button type="submit" class="btn btn-sm btn-outline-light" title="Sign out">
+              <i class="bi bi-box-arrow-right"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <main>
+      <div class="topbar">
+        <button class="btn btn-outline-light d-lg-none" id="sidebarToggle" aria-label="Toggle navigation">
+          <i class="bi bi-list"></i>
+        </button>
+        <div class="flex-grow-1">
+          <div class="fw-semibold" id="pageTitle">Dashboard</div>
+          <div class="small text-muted-2" id="pageSubtitle">Overview of your institution</div>
+        </div>
+
+        <div class="dropdown position-relative">
+          <button class="btn btn-outline-light position-relative" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-bell"></i>
+            <span class="notif-dot" id="notifDot" style="display:none"></span>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end p-2" style="min-width:340px;max-height:420px;overflow:auto;">
+            <div class="d-flex justify-content-between align-items-center px-2 py-1">
+              <strong>Notifications</strong>
+              <button class="btn btn-sm btn-outline-light" id="markAllRead"><i class="bi bi-check2"></i> Read</button>
+            </div>
+            <div id="notifList"><div class="empty"><i class="bi bi-bell-slash"></i><div>No notifications</div></div></div>
+          </div>
+        </div>
+
+        <div class="d-none d-md-block small text-muted-2 ms-2">
+          <i class="bi bi-calendar3 me-1"></i><span id="todayLabel"></span>
+        </div>
+      </div>
+
+      <div class="content">
+        <% if (typeof flash !== 'undefined' && flash) { %>
+          <div class="alert alert-<%= flash.type === 'success' ? 'success' : 'danger' %> alert-dismissible fade show" role="alert">
+            <%= flash.message %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        <% } %>
+
+        <!-- DASHBOARD -->
+        <section class="section-page active" data-section="dashboard">
+          <div class="row g-3" id="statTiles"></div>
+          <div class="row g-3 mt-1">
+            <div class="col-lg-7">
+              <div class="card card-soft">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <span><i class="bi bi-graph-up-arrow me-2"></i>Attendance · last 7 days</span>
+                  <span class="small text-muted-2">Daily counts</span>
+                </div>
+                <div class="card-body">
+                  <div class="chart-shell"><canvas id="attendanceChart"></canvas></div>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-5">
+              <div class="card card-soft h-100">
+                <div class="card-header"><i class="bi bi-bar-chart-line me-2"></i>Subject averages</div>
+                <div class="card-body">
+                  <div class="chart-shell"><canvas id="scoreChart"></canvas></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row g-3 mt-1">
+            <div class="col-lg-6">
+              <div class="card card-soft h-100">
+                <div class="card-header"><i class="bi bi-clock-history me-2"></i>Recent attendance</div>
+                <div class="card-body p-0">
+                  <div class="scrollable">
+                    <table class="table table-hover mb-0">
+                      <thead><tr><th>Date</th><th>Subject</th><th>Status</th></tr></thead>
+                      <tbody id="recentAttendanceBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="card card-soft h-100">
+                <div class="card-header"><i class="bi bi-clipboard-data me-2"></i>Recent scores</div>
+                <div class="card-body p-0">
+                  <div class="scrollable">
+                    <table class="table table-hover mb-0">
+                      <thead><tr><th>Subject</th><th>Exam</th><th>Score</th><th>Grade</th></tr></thead>
+                      <tbody id="recentScoresBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- COURSES -->
+        <section class="section-page" data-section="courses">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Courses</h5>
+            <button class="btn btn-primary" data-permission="admin" data-action="new" data-entity="course">
+              <i class="bi bi-plus-lg me-1"></i>Add course
+            </button>
+          </div>
+          <div class="card card-soft">
+            <div class="card-body p-0">
+              <div class="scrollable">
+                <table class="table table-hover mb-0">
+                  <thead class="sticky"><tr><th>Code</th><th>Name</th><th>Duration</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+                  <tbody id="coursesBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SUBJECTS -->
+        <section class="section-page" data-section="subjects">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Subjects</h5>
+            <button class="btn btn-primary" data-permission="admin,teacher" data-action="new" data-entity="subject">
+              <i class="bi bi-plus-lg me-1"></i>Add subject
+            </button>
+          </div>
+          <div class="card card-soft">
+            <div class="card-body p-0">
+              <div class="scrollable">
+                <table class="table table-hover mb-0">
+                  <thead class="sticky"><tr><th>Code</th><th>Name</th><th>Course</th><th>Teacher</th><th>Credits</th><th class="text-end">Actions</th></tr></thead>
+                  <tbody id="subjectsBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ATTENDANCE -->
+        <section class="section-page" data-section="attendance">
+          <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+            <h5 class="mb-0">Attendance</h5>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+              <input type="date" id="attFrom" class="form-control form-control-sm" />
+              <input type="date" id="attTo" class="form-control form-control-sm" />
+              <select id="attSubject" class="form-select form-select-sm"><option value="">All subjects</option></select>
+              <select id="attStudent" class="form-select form-select-sm" style="display:none"><option value="">All students</option></select>
+              <button class="btn btn-primary btn-sm" data-permission="admin,teacher" data-action="new" data-entity="attendance">
+                <i class="bi bi-plus-lg me-1"></i>Mark
+              </button>
+            </div>
+          </div>
+          <div class="card card-soft">
+            <div class="card-body p-0">
+              <div class="scrollable">
+                <table class="table table-hover mb-0">
+                  <thead class="sticky"><tr><th>Date</th><th>Student</th><th>Subject</th><th>Status</th><th>Remarks</th><th class="text-end">Actions</th></tr></thead>
+                  <tbody id="attendanceBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SCORES -->
+        <section class="section-page" data-section="scores">
+          <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+            <h5 class="mb-0">Scores</h5>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+              <select id="scoreSubject" class="form-select form-select-sm"><option value="">All subjects</option></select>
+              <button class="btn btn-primary btn-sm" data-permission="admin,teacher" data-action="new" data-entity="score">
+                <i class="bi bi-plus-lg me-1"></i>Record
+              </button>
+            </div>
+          </div>
+          <div class="card card-soft">
+            <div class="card-body p-0">
+              <div class="scrollable">
+                <table class="table table-hover mb-0">
+                  <thead class="sticky"><tr><th>Student</th><th>Subject</th><th>Exam</th><th>Marks</th><th>Percent</th><th>Grade</th><th class="text-end">Actions</th></tr></thead>
+                  <tbody id="scoresBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- USERS -->
+        <section class="section-page" data-section="users">
+          <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+            <h5 class="mb-0">Users</h5>
+            <div class="d-flex gap-2 align-items-center">
+              <input id="userSearch" class="form-control form-control-sm" placeholder="Search name, email, roll no..." />
+              <select id="userRoleFilter" class="form-select form-select-sm">
+                <option value="">All roles</option>
+                <option value="admin">Admin</option>
+                <option value="teacher">Teacher</option>
+                <option value="student">Student</option>
+              </select>
+              <button class="btn btn-primary btn-sm" data-permission="admin" data-action="new" data-entity="user">
+                <i class="bi bi-plus-lg me-1"></i>Add user
+              </button>
+            </div>
+          </div>
+          <div class="card card-soft">
+            <div class="card-body p-0">
+              <div class="scrollable">
+                <table class="table table-hover mb-0">
+                  <thead class="sticky"><tr><th>Name</th><th>Email</th><th>Role</th><th>Roll</th><th>Course</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+                  <tbody id="usersBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- LEAVES -->
+        <section class="section-page" data-section="leaves">
+          <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+            <h5 class="mb-0">Leave requests</h5>
+            <div class="d-flex gap-2 align-items-center">
+              <select id="leaveStatus" class="form-select form-select-sm">
+                <option value="">All</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              <button class="btn btn-primary btn-sm" data-action="new" data-entity="leave">
+                <i class="bi bi-plus-lg me-1"></i>Request leave
+              </button>
+            </div>
+          </div>
+          <div class="card card-soft">
+            <div class="card-body p-0">
+              <div class="scrollable">
+                <table class="table table-hover mb-0">
+                  <thead class="sticky"><tr><th>Student</th><th>From</th><th>To</th><th>Reason</th><th>Status</th><th>Decision</th><th class="text-end">Actions</th></tr></thead>
+                  <tbody id="leavesBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- NOTIFICATIONS -->
+        <section class="section-page" data-section="notifications">
+          <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+            <h5 class="mb-0">Notifications</h5>
+            <button class="btn btn-primary btn-sm" data-permission="admin,teacher" data-action="new" data-entity="notification">
+              <i class="bi bi-plus-lg me-1"></i>Compose
+            </button>
+          </div>
+          <div class="card card-soft">
+            <div class="card-body p-0">
+              <div class="list-group list-group-flush" id="notifFeed"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- FEEDBACK -->
+        <section class="section-page" data-section="feedback">
+          <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+            <h5 class="mb-0">Feedback</h5>
+            <div class="d-flex gap-2 align-items-center">
+              <select id="feedbackStatus" class="form-select form-select-sm">
+                <option value="">All</option>
+                <option value="open">Open</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="resolved">Resolved</option>
+                <option value="dismissed">Dismissed</option>
+              </select>
+              <button class="btn btn-primary btn-sm" data-action="new" data-entity="feedback">
+                <i class="bi bi-plus-lg me-1"></i>Submit
+              </button>
+            </div>
+          </div>
+          <div class="card card-soft">
+            <div class="card-body p-0">
+              <div class="list-group list-group-flush" id="feedbackFeed"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal fade" id="entityModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <form id="entityForm">
+          <div class="modal-header">
+            <h5 class="modal-title" id="entityModalTitle">Edit</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="entityModalBody"></div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="entitySaveBtn">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script>
+  /* ============================================================
+   * SMS Client App
+   * Single-page shell. All entities, modals, charts, toasts.
+   * ============================================================ */
+  (function () {
+    'use strict';
+
+    const CURRENT_USER = <%- JSON.stringify(user) %>;
+    const ROLES = { ADMIN: 'admin', TEACHER: 'teacher', STUDENT: 'student' };
+    const TODAY = new Date().toISOString().slice(0, 10);
+    document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+
+    /* ---------- Helpers ---------- */
+    function $(sel, root = document) { return root.querySelector(sel); }
+    function $all(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
+
+    function esc(s) {
+      if (s == null) return '';
+      return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function fmtDate(value) {
+      if (!value) return '—';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function fmtDateTime(value) {
+      if (!value) return '—';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return '—';
+      return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function gradeFromPct(p) {
+      if (p >= 90) return { g: 'A+', cls: 'bg-approved' };
+      if (p >= 80) return { g: 'A', cls: 'bg-approved' };
+      if (p >= 70) return { g: 'B', cls: 'bg-present' };
+      if (p >= 60) return { g: 'C', cls: 'bg-late' };
+      if (p >= 50) return { g: 'D', cls: 'bg-late' };
+      return { g: 'F', cls: 'bg-rejected' };
+    }
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, {
+        method: opts.method || 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        credentials: 'same-origin',
+      });
+      let data = null;
+      try { data = await res.json(); } catch (_) { /* ignore */ }
+      if (!res.ok) {
+        const msg = (data && data.error) ? data.error : 'Request failed';
+        throw new Error(msg);
+      }
+      return data || {};
+    }
+
+    function toast(message, type = 'success') {
+      const id = 't' + Math.random().toString(36).slice(2, 8);
+      const colorMap = {
+        success: 'bg-success', danger: 'bg-danger', warning: 'bg-warning text-dark', info: 'bg-info text-dark',
+      };
+      const html = `
+        <div id="${id}" class="toast align-items-center text-white ${colorMap[type] || 'bg-dark'} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="d-flex">
+            <div class="toast-body">${esc(message)}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        </div>`;
+      $('#toastContainer').insertAdjacentHTML('beforeend', html);
+      const t = new bootstrap.Toast($('#' + id), { delay: 3500 });
+      t.show();
+      $('#' + id).addEventListener('hidden.bs.toast', () => $('#' + id).remove());
+    }
+
+    /* ---------- Permissions ---------- */
+    function can(perms) {
+      if (!perms) return true;
+      const list = perms.split(',').map((p) => p.trim()).filter(Boolean);
+      if (!list.length) return true;
+      return list.includes(CURRENT_USER.role);
+    }
+
+    function applyPermissions() {
+      $all('[data-permission]').forEach((el) => {
+        if (!can(el.getAttribute('data-permission'))) el.style.display = 'none';
+      });
+    }
+
+    /* ---------- Sidebar / Sections ---------- */
+    const sidebar = $('#sidebar');
+    $('#sidebarToggle').addEventListener('click', () => sidebar.classList.toggle('open'));
+    $('#sidebarBackdrop').addEventListener('click', () => sidebar.classList.remove('open'));
+
+    const TITLES = {
+      dashboard: ['Dashboard', 'Overview of your institution'],
+      courses: ['Courses', 'Manage academic programs'],
+      subjects: ['Subjects', 'Subjects in each course'],
+      attendance: ['Attendance', 'Daily attendance records'],
+      scores: ['Scores', 'Marks, percentages, and grades'],
+      users: ['Users', 'Admins, teachers, and students'],
+      leaves: ['Leaves', 'Student leave requests'],
+      notifications: ['Notifications', 'Broadcasts and announcements'],
+      feedback: ['Feedback', 'Suggestions and bug reports'],
+    };
+
+    function goSection(name) {
+      $all('.nav-link[data-section]').forEach((n) => n.classList.toggle('active', n.getAttribute('data-section') === name));
+      $all('.section-page').forEach((p) => p.classList.toggle('active', p.getAttribute('data-section') === name));
+      const [t, s] = TITLES[name] || [name, ''];
+      $('#pageTitle').textContent = t;
+      $('#pageSubtitle').textContent = s;
+      sidebar.classList.remove('open');
+      const loader = LOADERS[name];
+      if (loader) loader();
+    }
+
+    $all('.nav-link[data-section]').forEach((n) => {
+      n.addEventListener('click', (e) => { e.preventDefault(); goSection(n.getAttribute('data-section')); });
+    });
+
+    /* ---------- Modal helpers ---------- */
+    const entityModal = new bootstrap.Modal($('#entityModal'));
+    const entityForm = $('#entityForm');
+    const entityModalBody = $('#entityModalBody');
+    const entityModalTitle = $('#entityModalTitle');
+    let onSubmitHandler = null;
+
+    function openModal(title, bodyHtml, onSubmit) {
+      entityModalTitle.textContent = title;
+      entityModalBody.innerHTML = bodyHtml;
+      onSubmitHandler = onSubmit;
+      entityModal.show();
+    }
+
+    entityForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = $('#entitySaveBtn');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const form = e.target;
+        const data = {};
+        $all('input, select, textarea', form).forEach((el) => {
+          if (!el.name) return;
+          if (el.type === 'checkbox') data[el.name] = el.checked;
+          else if (el.value !== '') data[el.name] = el.value;
+        });
+        if (onSubmitHandler) await onSubmitHandler(data);
+      } catch (err) {
+        toast(err.message || 'Save failed', 'danger');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Save';
+      }
+    });
+
+    function confirmAction(message) {
+      return new Promise((resolve) => {
+        const ok = window.confirm(message);
+        resolve(ok);
+      });
+    }
+
+    /* ---------- State caches ---------- */
+    const CACHE = { courses: [], subjects: [], users: [] };
+
+    /* ---------- Chart.js ---------- */
+    const chartTheme = {
+      grid: 'rgba(148,163,184,.15)',
+      text: '#cbd5e1',
+      present: '#10b981',
+      absent: '#ef4444',
+      late: '#f59e0b',
+      excused: '#0ea5e9',
+    };
+    let attendanceChartObj = null;
+    let scoreChartObj = null;
+
+    function renderAttendanceChart(rows) {
+      const labels = rows.map((r) => new Date(r.day).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+      const datasets = [
+        { label: 'Present', data: rows.map((r) => r.present), backgroundColor: chartTheme.present, borderRadius: 6 },
+        { label: 'Absent', data: rows.map((r) => r.absent), backgroundColor: chartTheme.absent, borderRadius: 6 },
+        { label: 'Late', data: rows.map((r) => r.late), backgroundColor: chartTheme.late, borderRadius: 6 },
+        { label: 'Excused', data: rows.map((r) => r.excused), backgroundColor: chartTheme.excused, borderRadius: 6 },
+      ];
+      const ctx = $('#attendanceChart').getContext('2d');
+      if (attendanceChartObj) attendanceChartObj.destroy();
+      attendanceChartObj = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: chartTheme.text } } },
+          scales: {
+            x: { stacked: true, ticks: { color: chartTheme.text }, grid: { color: chartTheme.grid } },
+            y: { stacked: true, ticks: { color: chartTheme.text }, grid: { color: chartTheme.grid } },
+          },
+        },
+      });
+    }
+
+    function renderScoreChart(rows) {
+      const labels = rows.map((r) => r.subject);
+      const data = rows.map((r) => r.average);
+      const ctx = $('#scoreChart').getContext('2d');
+      if (scoreChartObj) scoreChartObj.destroy();
+      scoreChartObj = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Average %',
+            data,
+            backgroundColor: ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#0ea5e9'],
+            borderRadius: 8,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: chartTheme.text }, grid: { color: chartTheme.grid } },
+            y: { beginAtZero: true, max: 100, ticks: { color: chartTheme.text }, grid: { color: chartTheme.grid } },
+          },
+        },
+      });
+    }
+
+    /* ---------- Dashboard ---------- */
+    async function loadDashboard() {
+      try {
+        const d = await api('/api/dashboard');
+        const c = d.counts || {};
+        const tiles = [
+          ['primary', 'people-fill', 'Users', c.users],
+          ['success', 'person-check-fill', 'Students', c.students],
+          ['info', 'person-badge', 'Teachers', c.teachers],
+          ['purple', 'collection-fill', 'Courses', c.courses],
+          ['warning', 'book-fill', 'Subjects', c.subjects],
+          ['danger', 'airplane-fill', 'Pending leaves', c.pendingLeaves],
+          ['warning', 'chat-square-text-fill', 'Open feedback', c.openFeedback],
+          ['info', 'bell-fill', 'Notifications', c.notifications],
+        ];
+        $('#statTiles').innerHTML = tiles.map(([cls, icon, label, value]) => `
+          <div class="col-6 col-md-3">
+            <div class="stat-tile ${cls} h-100 d-flex justify-content-between align-items-center">
+              <div>
+                <div class="label">${esc(label)}</div>
+                <div class="value">${esc(value ?? 0)}</div>
+              </div>
+              <i class="bi bi-${icon} icon"></i>
+            </div>
+          </div>`).join('');
+
+        renderAttendanceChart(d.attendanceChart || []);
+        renderScoreChart(d.scoreChart || []);
+
+        $('#recentAttendanceBody').innerHTML = (d.recentAttendance || []).map((r) => `
+          <tr>
+            <td>${fmtDate(r.date)}</td>
+            <td>${esc(r.subject ? r.subject.name : '—')}</td>
+            <td><span class="badge bg-${esc(r.status)}">${esc(r.status)}</span></td>
+          </tr>`).join('') || `<tr><td colspan="3" class="empty"><i class="bi bi-inbox"></i><div>No records yet</div></td></tr>`;
+
+        $('#recentScoresBody').innerHTML = (d.recentScores || []).map((s) => {
+          const pct = Math.round((s.marksObtained / s.totalMarks) * 100);
+          const gr = gradeFromPct(pct);
+          return `<tr>
+            <td>${esc(s.subject ? s.subject.name : '—')}</td>
+            <td>${esc(s.examType)}</td>
+            <td>${s.marksObtained}/${s.totalMarks}</td>
+            <td><span class="badge ${gr.cls}">${gr.g} · ${pct}%</span></td>
+          </tr>`;
+        }).join('') || `<tr><td colspan="4" class="empty"><i class="bi bi-inbox"></i><div>No scores yet</div></td></tr>`;
+      } catch (e) {
+        toast(e.message, 'danger');
+      }
+    }
+
+    /* ---------- Courses ---------- */
+    async function loadCourses() {
+      try {
+        const d = await api('/api/courses');
+        CACHE.courses = d.courses || [];
+        $('#coursesBody').innerHTML = CACHE.courses.map((c) => `
+          <tr>
+            <td><code>${esc(c.code)}</code></td>
+            <td>${esc(c.name)}</td>
+            <td>${esc(c.durationYears)} year(s)</td>
+            <td>${c.active ? '<span class="badge bg-approved">Active</span>' : '<span class="badge bg-dismissed">Inactive</span>'}</td>
+            <td class="text-end">
+              ${can('admin') ? `
+                <button class="btn btn-sm btn-outline-light me-1" data-action="edit" data-entity="course" data-id="${c._id}"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger" data-action="delete" data-entity="course" data-id="${c._id}"><i class="bi bi-trash"></i></button>
+              ` : ''}
+            </td>
+          </tr>`).join('') || `<tr><td colspan="5" class="empty"><i class="bi bi-collection"></i><div>No courses</div></td></tr>`;
+      } catch (e) { toast(e.message, 'danger'); }
+    }
+
+    function courseForm(c) {
+      return `
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Code</label>
+            <input class="form-control" name="code" required value="${esc(c ? c.code : '')}" />
+          </div>
+          <div class="col-md-8">
+            <label class="form-label">Name</label>
+            <input class="form-control" name="name" required value="${esc(c ? c.name : '')}" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Duration (years)</label>
+            <input type="number" min="1" max="6" class="form-control" name="durationYears" value="${esc(c ? c.durationYears : 3)}" />
+          </div>
+          <div class="col-md-8">
+            <label class="form-label">Description</label>
+            <input class="form-control" name="description" value="${esc(c ? c.description : '')}" />
+          </div>
+          <div class="col-12 form-check ms-1 mt-1">
+            <input class="form-check-input" type="checkbox" name="active" id="courseActive" ${(!c || c.active) ? 'checked' : ''} />
+            <label class="form-check-label" for="courseActive">Active</label>
+          </div>
+        </div>`;
+    }
+
+    /* ---------- Subjects ---------- */
+    async function loadSubjects() {
+      try {
+        const d = await api('/api/subjects');
+        CACHE.subjects = d.subjects || [];
+        $('#subjectsBody').innerHTML = CACHE.subjects.map((s) => `
+          <tr>
+            <td><code>${esc(s.code)}</code></td>
+            <td>${esc(s.name)}</td>
+            <td>${esc(s.course ? s.course.name : '—')}</td>
+            <td>${esc(s.teacher ? s.teacher.name : '—')}</td>
+            <td>${esc(s.credits)}</td>
+            <td class="text-end">
+              ${can('admin,teacher') ? `
+                <button class="btn btn-sm btn-outline-light me-1" data-action="edit" data-entity="subject" data-id="${s._id}"><i class="bi bi-pencil"></i></button>
+              ` : ''}
+              ${can('admin') ? `
+                <button class="btn btn-sm btn-outline-danger" data-action="delete" data-entity="subject" data-id="${s._id}"><i class="bi bi-trash"></i></button>
+              ` : ''}
+            </td>
+          </tr>`).join('') || `<tr><td colspan="6" class="empty"><i class="bi bi-book"></i><div>No subjects</div></td></tr>`;
+
+        // populate filter selects
+        $('#attSubject').innerHTML = '<option value="">All subjects</option>' +
+          CACHE.subjects.map((s) => `<option value="${s._id}">${esc(s.code)} · ${esc(s.name)}</option>`).join('');
+        $('#scoreSubject').innerHTML = '<option value="">All subjects</option>' +
+          CACHE.subjects.map((s) => `<option value="${s._id}">${esc(s.code)} · ${esc(s.name)}</option>`).join('');
+      } catch (e) { toast(e.message, 'danger'); }
+    }
+
+    function subjectForm(s) {
+      const courseOpts = CACHE.courses.map((c) => `<option value="${c._id}" ${s && s.course && s.course._id === c._id ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+      const teacherOpts = '<option value="">—</option>' + CACHE.users.filter((u) => u.role === 'teacher').map((u) => `<option value="${u._id}" ${s && s.teacher && s.teacher._id === u._id ? 'selected' : ''}>${esc(u.name)}</option>`).join('');
+      return `
+        <div class="row g-3">
+          <div class="col-md-4"><label class="form-label">Code</label><input class="form-control" name="code" required value="${esc(s ? s.code : '')}" /></div>
+          <div class="col-md-8"><label class="form-label">Name</label><input class="form-control" name="name" required value="${esc(s ? s.name : '')}" /></div>
+          <div class="col-md-6"><label class="form-label">Course</label><select class="form-select" name="course" required>${courseOpts}</select></div>
+          <div class="col-md-4"><label class="form-label">Teacher</label><select class="form-select" name="teacher">${teacherOpts}</select></div>
+          <div class="col-md-2"><label class="form-label">Credits</label><input type="number" min="1" max="10" class="form-control" name="credits" value="${esc(s ? s.credits : 3)}" /></div>
+          <div class="col-12"><label class="form-label">Description</label><input class="form-control" name="description" value="${esc(s ? s.description : '')}" /></div>
+        </div>`;
+    }
+
+    /* ---------- Users ---------- */
+    async function loadUsers() {
+      try {
+        const role = $('#userRoleFilter').value;
+        const q = $('#userSearch').value;
+        const params = new URLSearchParams();
+        if (role) params.set('role', role);
+        if (q) params.set('q', q);
+        const d = await api('/api/users?' + params.toString());
+        CACHE.users = d.users || [];
+        $('#usersBody').innerHTML = CACHE.users.map((u) => `
+          <tr>
+            <td><div class="fw-semibold">${esc(u.name)}</div></td>
+            <td>${esc(u.email)}</td>
+            <td><span class="role-chip ${esc(u.role)}">${esc(u.role)}</span></td>
+            <td>${esc(u.rollNo || '—')}</td>
+            <td>${esc(u.course ? u.course.name : '—')}</td>
+            <td>${u.active ? '<span class="badge bg-approved">Active</span>' : '<span class="badge bg-dismissed">Disabled</span>'}</td>
+            <td class="text-end">
+              ${can('admin') ? `
+                <button class="btn btn-sm btn-outline-light me-1" data-action="edit" data-entity="user" data-id="${u._id}"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger" data-action="delete" data-entity="user" data-id="${u._id}"><i class="bi bi-trash"></i></button>
+              ` : ''}
+            </td>
+          </tr>`).join('') || `<tr><td colspan="7" class="empty"><i class="bi bi-people"></i><div>No users</div></td></tr>`;
+      } catch (e) { toast(e.message, 'danger'); }
+    }
+
+    function userForm(u) {
+      const courseOpts = '<option value="">—</option>' + CACHE.courses.map((c) => `<option value="${c._id}" ${u && u.course && (u.course._id || u.course) === c._id ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+      return `
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label">Name</label><input class="form-control" name="name" required value="${esc(u ? u.name : '')}" /></div>
+          <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" name="email" required value="${esc(u ? u.email : '')}" ${u ? 'readonly' : ''} /></div>
+          <div class="col-md-6"><label class="form-label">Role</label>
+            <select class="form-select" name="role" required>
+              <option value="admin" ${u && u.role === 'admin' ? 'selected' : ''}>Admin</option>
+              <option value="teacher" ${u && u.role === 'teacher' ? 'selected' : ''}>Teacher</option>
+              <option value="student" ${u && u.role === 'student' ? 'selected' : ''}>Student</option>
+            </select>
+          </div>
+          <div class="col-md-6"><label class="form-label">${u ? 'New password (leave blank to keep)' : 'Password'}</label><input type="password" class="form-control" name="password" ${u ? '' : 'required'} minlength="6" /></div>
+          <div class="col-md-6"><label class="form-label">Roll no</label><input class="form-control" name="rollNo" value="${esc(u ? (u.rollNo || '') : '')}" /></div>
+          <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" name="phone" value="${esc(u ? (u.phone || '') : '')}" /></div>
+          <div class="col-12"><label class="form-label">Course</label><select class="form-select" name="course">${courseOpts}</select></div>
+          <div class="col-12 form-check ms-1 mt-1">
+            <input class="form-check-input" type="checkbox" name="active" id="userActive" ${(!u || u.active) ? 'checked' : ''} />
+            <label class="form-check-label" for="userActive">Active</label>
+          </div>
+        </div>`;
+    }
+
+    /* ---------- Attendance ---------- */
+    async function loadAttendance() {
+      try {
+        const params = new URLSearchParams();
+        const from = $('#attFrom').value; if (from) params.set('from', from);
+        const to = $('#attTo').value; if (to) params.set('to', to);
+        const sub = $('#attSubject').value; if (sub) params.set('subject', sub);
+        const stu = $('#attStudent').value; if (stu) params.set('student', stu);
+        const d = await api('/api/attendance?' + params.toString());
+        $('#attendanceBody').innerHTML = (d.records || []).map((r) => `
+          <tr>
+            <td>${fmtDate(r.date)}</td>
+            <td>${esc(r.student ? (r.student.name + (r.student.rollNo ? ' · ' + r.student.rollNo : '')) : '—')}</td>
+            <td>${esc(r.subject ? (r.subject.code + ' · ' + r.subject.name) : '—')}</td>
+            <td><span class="badge bg-${esc(r.status)}">${esc(r.status)}</span></td>
+            <td class="text-muted-2 small">${esc(r.remarks || '')}</td>
+            <td class="text-end">
+              ${can('admin,teacher') ? `
+                <button class="btn btn-sm btn-outline-light me-1" data-action="edit" data-entity="attendance" data-id="${r._id}"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger" data-action="delete" data-entity="attendance" data-id="${r._id}"><i class="bi bi-trash"></i></button>
+              ` : ''}
+            </td>
+          </tr>`).join('') || `<tr><td colspan="6" class="empty"><i class="bi bi-calendar-check"></i><div>No attendance records</div></td></tr>`;
+      } catch (e) { toast(e.message, 'danger'); }
+    }
+
+    function attendanceForm(r) {
+      const studentOpts = '<option value="">—</option>' + CACHE.users.filter((u) => u.role === 'student').map((u) => `<option value="${u._id}" ${r && r.student && r.student._id === u._id ? 'selected' : ''}>${esc(u.name)}</option>`).join('');
+      const subjectOpts = CACHE.subjects.map((s) => `<option value="${s._id}" ${r && r.subject && r.subject._id === s._id ? 'selected' : ''}>${esc(s.code)} · ${esc(s.name)}</option>`).join('');
+      const today = r ? new Date(r.date).toISOString().slice(0, 10) : TODAY;
+      return `
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label">Student</label><select class="form-select" name="student" required>${studentOpts}</select></div>
+          <div class="col-md-6"><label class="form-label">Subject</label><select class="form-select" name="subject" required>${subjectOpts}</select></div>
+          <div class="col-md-4"><label class="form-label">Date</label><input type="date" class="form-control" name="date" required value="${today}" /></div>
+          <div class="col-md-4"><label class="form-label">Status</label>
+            <select class="form-select" name="status" required>
+              ${['present','absent','late','excused'].map((s) => `<option value="${s}" ${r && r.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
+          <div class="col-md-4"><label class="form-label">Remarks</label><input class="form-control" name="remarks" value="${esc(r ? (r.remarks || '') : '')}" /></div>
+        </div>`;
+    }
+
+    /* ---------- Scores ---------- */
+    async function loadScores() {
+      try {
+        const params = new URLSearchParams();
+        const sub = $('#scoreSubject').value; if (sub) params.set('subject', sub);
+        const d = await api('/api/scores?' + params.toString());
+        $('#scoresBody').innerHTML = (d.scores || []).map((s) => {
+          const pct = Math.round((s.marksObtained / s.totalMarks) * 100);
+          const gr = gradeFromPct(pct);
+          return `<tr>
+            <td>${esc(s.student ? s.student.name : '—')}</td>
+            <td>${esc(s.subject ? s.subject.name : '—')}</td>
+            <td>${esc(s.examType)}</td>
+            <td>${s.marksObtained}/${s.totalMarks}</td>
+            <td>${pct}%</td>
+            <td><span class="badge ${gr.cls}">${gr.g}</span></td>
+            <td class="text-end">
+              ${can('admin,teacher') ? `
+                <button class="btn btn-sm btn-outline-light me-1" data-action="edit" data-entity="score" data-id="${s._id}"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger" data-action="delete" data-entity="score" data-id="${s._id}"><i class="bi bi-trash"></i></button>
+              ` : ''}
+            </td>
+          </tr>`;
+        }).join('') || `<tr><td colspan="7" class="empty"><i class="bi bi-bar-chart"></i><div>No scores recorded</div></td></tr>`;
+      } catch (e) { toast(e.message, 'danger'); }
+    }
+
+    function scoreForm(s) {
+      const studentOpts = CACHE.users.filter((u) => u.role === 'student').map((u) => `<option value="${u._id}" ${s && s.student && s.student._id === u._id ? 'selected' : ''}>${esc(u.name)}</option>`).join('');
+      const subjectOpts = CACHE.subjects.map((sub) => `<option value="${sub._id}" ${s && s.subject && s.subject._id === sub._id ? 'selected' : ''}>${esc(sub.code)} · ${esc(sub.name)}</option>`).join('');
+      return `
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label">Student</label><select class="form-select" name="student" required>${studentOpts}</select></div>
+          <div class="col-md-6"><label class="form-label">Subject</label><select class="form-select" name="subject" required>${subjectOpts}</select></div>
+          <div class="col-md-4"><label class="form-label">Exam type</label>
+            <select class="form-select" name="examType" required>
+              ${['quiz','midterm','final','assignment','project'].map((t) => `<option value="${t}" ${s && s.examType === t ? 'selected' : ''}>${t}</option>`).join('')}
+            </select>
+          </div>
+          <div class="col-md-4"><label class="form-label">Marks obtained</label><input type="number" min="0" step="0.01" class="form-control" name="marksObtained" required value="${esc(s ? s.marksObtained : '')}" /></div>
+          <div class="col-md-4"><label class="form-label">Total marks</label><input type="number" min="1" step="0.01" class="form-control" name="totalMarks" required value="${esc(s ? s.totalMarks : 100)}" /></div>
+          <div class="col-12"><label class="form-label">Remarks</label><input class="form-control" name="remarks" value="${esc(s ? (s.remarks || '') : '')}" /></div>
+        </div>`;
+    }
+
+    /* ---------- Leaves ---------- */
+    async function loadLeaves() {
+      try {
+        const params = new URLSearchParams();
+        const st = $('#leaveStatus').value; if (st) params.set('status', st);
+        const d = await api('/api/leaves?' + params.toString());
+        $('#leavesBody').innerHTML = (d.leaves || []).map((l) => `
+          <tr>
+            <td>${esc(l.student ? l.student.name : '—')}</td>
+            <td>${fmtDate(l.fromDate)}</td>
+            <td>${fmtDate(l.toDate)}</td>
+            <td class="text-muted-2 small">${esc(l.reason)}</td>
+            <td><span class="badge bg-${esc(l.status)}">${esc(l.status)}</span></td>
+            <td class="text-muted-2 small">${esc(l.decisionNote || '—')}</td>
+            <td class="text-end">
+              ${can('admin,teacher') && l.status === 'pending' ? `
+                <button class="btn btn-sm btn-outline-success me-1" data-action="decide" data-id="${l._id}" data-decision="approved"><i class="bi bi-check2"></i></button>
+                <button class="btn btn-sm btn-outline-danger" data-action="decide" data-id="${l._id}" data-decision="rejected"><i class="bi bi-x"></i></button>
+              ` : ''}
+              ${(can('admin') || l.student === CURRENT_USER.id) && l.status === 'pending' ? `
+                <button class="btn btn-sm btn-outline-light ms-1" data-action="delete" data-entity="leave" data-id="${l._id}"><i class="bi bi-trash"></i></button>
+              ` : ''}
+            </td>
+          </tr>`).join('') || `<tr><td colspan="7" class="empty"><i class="bi bi-airplane"></i><div>No leave requests</div></td></tr>`;
+      } catch (e) { toast(e.message, 'danger'); }
+    }
+
+    function leaveForm() {
+      const studentOpts = (CURRENT_USER.role === 'student')
+        ? ''
+        : '<option value="">—</option>' + CACHE.users.filter((u) => u.role === 'student').map((u) => `<option value="${u._id}">${esc(u.name)}</option>`).join('');
+      const studentField = (CURRENT_USER.role === 'student')
+        ? ''
+        : `<div class="col-md-6"><label class="form-label">Student</label><select class="form-select" name="student" required>${studentOpts}</select></div>`;
+      return `
+        <div class="row g-3">
+          ${studentField}
+          <div class="col-md-3"><label class="form-label">From</label><input type="date" class="form-control" name="fromDate" required value="${TODAY}" /></div>
+          <div class="col-md-3"><label class="form-label">To</label><input type="date" class="form-control" name="toDate" required value="${TODAY}" /></div>
+          <div class="col-12"><label class="form-label">Reason</label><textarea class="form-control" name="reason" required rows="3" maxlength="500"></textarea></div>
+        </div>`;
+    }
+
+    /* ---------- Notifications ---------- */
+    async function loadNotifications() {
+      try {
+        const d = await api('/api/notifications');
+        $('#notifFeed').innerHTML = (d.notifications || []).map((n) => `
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between">
+              <div>
+                <div class="fw-semibold">${esc(n.title)}</div>
+                <div class="text-muted-2 small">${esc(n.body || '')}</div>
+                <div class="text-muted-2 small mt-1"><i class="bi bi-person-circle me-1"></i>${esc(n.createdBy ? n.createdBy.name : '—')} · ${fmtDateTime(n.createdAt)} · <span class="badge bg-info">${esc(n.audience)}${n.role ? ' · ' + n.role : ''}</span></div>
+              </div>
+              ${can('admin,teacher') ? `<button class="btn btn-sm btn-outline-danger ms-2" data-action="delete" data-entity="notification" data-id="${n._id}"><i class="bi bi-trash"></i></button>` : ''}
+            </div>
+          </div>`).join('') || `<div class="empty"><i class="bi bi-bell-slash"></i><div>No notifications</div></div>`;
+
+        // Dropdown list
+        const unread = d.unread || 0;
+        $('#notifDot').style.display = unread > 0 ? 'block' : 'none';
+        $('#notifList').innerHTML = (d.notifications || []).slice(0, 8).map((n) => `
+          <div class="px-2 py-2 border-bottom" style="border-color:var(--line)!important">
+            <div class="fw-semibold small">${esc(n.title)}</div>
+            <div class="text-muted-2" style="font-size:.8rem">${esc((n.body || '').slice(0, 90))}</div>
+          </div>`).join('') || `<div class="empty"><i class="bi bi-bell-slash"></i><div>No notifications</div></div>`;
+      } catch (e) { toast(e.message, 'danger'); }
+    }
+
+    function notificationForm() {
+      return `
+        <div class="row g-3">
+          <div class="col-12"><label class="form-label">Title</label><input class="form-control" name="title" required maxlength="140" /></div>
+          <div class="col-12"><label class="form-label">Body</label><textarea class="form-control" name="body" rows="4" maxlength="2000"></textarea></div>
+          <div class="col-md-6"><label class="form-label">Audience</label>
+            <select class="form-select" name="audience">
+              <option value="all">All users</option>
+              <option value="admins">Admins</option>
+              <option value="teachers">Teachers</option>
+              <option value="students">Students</option>
+              <option value="role">Single role</option>
+            </select>
+          </div>
+          <div class="col-md-6"><label class="form-label">Role (if "Single role")</label>
+            <select class="form-select" name="role">
+              <option value="">—</option>
+              <option value="admin">Admin</option>
+              <option value="teacher">Teacher</option>
+              <option value="student">Student</option>
+            </select>
+          </div>
+        </div>`;
+    }
+
+    /* ---------- Feedback ---------- */
+    async function loadFeedback() {
+      try {
+        const params = new URLSearchParams();
+        const st = $('#feedbackStatus').value; if (st) params.set('status', st);
+        const d = await api('/api/feedback?' + params.toString());
+        $('#feedbackFeed').innerHTML = (d.feedback || []).map((f) => `
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between">
+              <div class="flex-grow-1">
+                <div class="d-flex align-items-center gap-2">
+                  <strong>${esc(f.subject)}</strong>
+                  <span class="badge bg-info">${esc(f.category)}</span>
+                  <span class="badge bg-${esc(f.status)}">${esc(f.status)}</span>
+                  ${f.rating ? `<span class="text-warning small">${'★'.repeat(f.rating)}${'☆'.repeat(5 - f.rating)}</span>` : ''}
+                </div>
+                <div class="text-muted-2 small">${esc(f.body)}</div>
+                <div class="text-muted-2 small mt-1"><i class="bi bi-person-circle me-1"></i>${esc(f.author ? f.author.name : '—')} · ${fmtDateTime(f.createdAt)}</div>
+                ${f.response ? `<div class="mt-2 p-2 rounded" style="background:rgba(99,102,241,.10);border:1px solid var(--line)"><strong>Response:</strong> ${esc(f.response)}</div>` : ''}
+              </div>
+              <div class="ms-2 d-flex flex-column gap-1">
+                ${can('admin,teacher') ? `
+                  <button class="btn btn-sm btn-outline-light" data-action="respond" data-id="${f._id}"><i class="bi bi-reply"></i></button>
+                ` : ''}
+                ${(can('admin') || (f.author && f.author._id === CURRENT_USER.id)) ? `
+                  <button class="btn btn-sm btn-outline-danger" data-action="delete" data-entity="feedback" data-id="${f._id}"><i class="bi bi-trash"></i></button>
+                ` : ''}
+              </div>
+            </div>
+          </div>`).join('') || `<div class="empty"><i class="bi bi-chat-square-text"></i><div>No feedback yet</div></div>`;
+      } catch (e) { toast(e.message, 'danger'); }
+    }
+
+    function feedbackForm() {
+      return `
+        <div class="row g-3">
+          <div class="col-md-8"><label class="form-label">Subject</label><input class="form-control" name="subject" required maxlength="140" /></div>
+          <div class="col-md-4"><label class="form-label">Category</label>
+            <select class="form-select" name="category">
+              <option value="general">General</option>
+              <option value="bug">Bug</option>
+              <option value="feature">Feature</option>
+              <option value="content">Content</option>
+              <option value="teacher">Teacher</option>
+            </select>
+          </div>
+          <div class="col-md-8"><label class="form-label">Details</label><textarea class="form-control" name="body" rows="4" required maxlength="2000"></textarea></div>
+          <div class="col-md-4"><label class="form-label">Rating (optional)</label>
+            <select class="form-select" name="rating">
+              <option value="">—</option>
+              <option value="5">★★★★★ (5)</option>
+              <option value="4">★★★★☆ (4)</option>
+              <option value="3">★★★☆☆ (3)</option>
+              <option value="2">★★☆☆☆ (2)</option>
+              <option value="1">★☆☆☆☆ (1)</option>
+            </select>
+          </div>
+        </div>`;
+    }
+
+    function feedbackRespondForm(f) {
+      return `
+        <div class="row g-3">
+          <div class="col-12"><label class="form-label">Status</label>
+            <select class="form-select" name="status">
+              ${['open','reviewed','resolved','dismissed'].map((s) => `<option value="${s}" ${f.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
+          <div class="col-12"><label class="form-label">Response</label><textarea class="form-control" name="response" rows="4">${esc(f.response || '')}</textarea></div>
+        </div>`;
+    }
+
+    /* ---------- Loaders map ---------- */
+    const LOADERS = {
+      dashboard: loadDashboard,
+      courses: async () => { await loadCourses(); },
+      subjects: async () => { await loadCourses(); await loadSubjects(); },
+      attendance: async () => { await loadCourses(); await loadUsers(); await loadSubjects(); await loadAttendance(); if (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'teacher') $('#attStudent').style.display = 'block'; },
+      scores: async () => { await loadUsers(); await loadSubjects(); await loadScores(); },
+      users: async () => { await loadCourses(); await loadUsers(); },
+      leaves: async () => { await loadLeaves(); },
+      notifications: async () => { await loadNotifications(); },
+      feedback: async () => { await loadFeedback(); },
+    };
+
+    /* ---------- Global click delegation ---------- */
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const action = btn.getAttribute('data-action');
+      const entity = btn.getAttribute('data-entity');
+      const id = btn.getAttribute('data-id');
+
+      try {
+        if (action === 'new' && entity === 'course') {
+          openModal('New course', courseForm(), async (data) => { await api('/api/courses', { method: 'POST', body: data }); toast('Course created'); loadCourses(); entityModal.hide(); });
+        } else if (action === 'edit' && entity === 'course') {
+          const c = CACHE.courses.find((x) => x._id === id);
+          if (!c) return;
+          openModal('Edit course', courseForm(c), async (data) => { await api('/api/courses/' + id, { method: 'PUT', body: data }); toast('Course updated'); loadCourses(); entityModal.hide(); });
+        } else if (action === 'delete' && entity === 'course') {
+          if (await confirmAction('Delete this course?')) { await api('/api/courses/' + id, { method: 'DELETE' }); toast('Course deleted'); loadCourses(); }
+        } else if (action === 'new' && entity === 'subject') {
+          openModal('New subject', subjectForm(), async (data) => { await api('/api/subjects', { method: 'POST', body: data }); toast('Subject created'); loadSubjects(); entityModal.hide(); });
+        } else if (action === 'edit' && entity === 'subject') {
+          const s = CACHE.subjects.find((x) => x._id === id);
+          if (!s) return;
+          openModal('Edit subject', subjectForm(s), async (data) => { await api('/api/subjects/' + id, { method: 'PUT', body: data }); toast('Subject updated'); loadSubjects(); entityModal.hide(); });
+        } else if (action === 'delete' && entity === 'subject') {
+          if (await confirmAction('Delete this subject?')) { await api('/api/subjects/' + id, { method: 'DELETE' }); toast('Subject deleted'); loadSubjects(); }
+        } else if (action === 'new' && entity === 'user') {
+          openModal('New user', userForm(), async (data) => { await api('/api/users', { method: 'POST', body: data }); toast('User created'); loadUsers(); entityModal.hide(); });
+        } else if (action === 'edit' && entity === 'user') {
+          const u = CACHE.users.find((x) => x._id === id);
+          if (!u) return;
+          openModal('Edit user', userForm(u), async (data) => { await api('/api/users/' + id, { method: 'PUT', body: data }); toast('User updated'); loadUsers(); entityModal.hide(); });
+        } else if (action === 'delete' && entity === 'user') {
+          if (await confirmAction('Delete this user?')) { await api('/api/users/' + id, { method: 'DELETE' }); toast('User deleted'); loadUsers(); }
+        } else if (action === 'new' && entity === 'attendance') {
+          openModal('Mark attendance', attendanceForm(), async (data) => { await api('/api/attendance', { method: 'POST', body: data }); toast('Attendance saved'); loadAttendance(); entityModal.hide(); });
+        } else if (action === 'edit' && entity === 'attendance') {
+          // fetch the single record by filter
+          const d = await api('/api/attendance');
+          const r = (d.records || []).find((x) => x._id === id);
+          if (!r) { toast('Record not found', 'danger'); return; }
+          openModal('Edit attendance', attendanceForm(r), async (data) => { await api('/api/attendance', { method: 'POST', body: data }); toast('Attendance updated'); loadAttendance(); entityModal.hide(); });
+        } else if (action === 'delete' && entity === 'attendance') {
+          if (await confirmAction('Delete this record?')) { await api('/api/attendance/' + id, { method: 'DELETE' }); toast('Record deleted'); loadAttendance(); }
+        } else if (action === 'new' && entity === 'score') {
+          openModal('Record score', scoreForm(), async (data) => { await api('/api/scores', { method: 'POST', body: data }); toast('Score saved'); loadScores(); entityModal.hide(); });
+        } else if (action === 'edit' && entity === 'score') {
+          const d = await api('/api/scores');
+          const s = (d.scores || []).find((x) => x._id === id);
+          if (!s) { toast('Score not found', 'danger'); return; }
+          openModal('Edit score', scoreForm(s), async (data) => { await api('/api/scores/' + id, { method: 'PUT', body: data }); toast('Score updated'); loadScores(); entityModal.hide(); });
+        } else if (action === 'delete' && entity === 'score') {
+          if (await confirmAction('Delete this score?')) { await api('/api/scores/' + id, { method: 'DELETE' }); toast('Score deleted'); loadScores(); }
+        } else if (action === 'new' && entity === 'leave') {
+          openModal('Request leave', leaveForm(), async (data) => { await api('/api/leaves', { method: 'POST', body: data }); toast('Leave requested'); loadLeaves(); entityModal.hide(); });
+        } else if (action === 'delete' && entity === 'leave') {
+          if (await confirmAction('Delete this leave request?')) { await api('/api/leaves/' + id, { method: 'DELETE' }); toast('Leave deleted'); loadLeaves(); }
+        } else if (action === 'decide') {
+          const status = btn.getAttribute('data-decision');
+          const note = window.prompt('Optional note for ' + status + ':', '') || '';
+          await api('/api/leaves/' + id, { method: 'PUT', body: { status, decisionNote: note } });
+          toast('Leave ' + status); loadLeaves();
+        } else if (action === 'new' && entity === 'notification') {
+          openModal('Compose notification', notificationForm(), async (data) => { await api('/api/notifications', { method: 'POST', body: data }); toast('Notification sent'); loadNotifications(); entityModal.hide(); });
+        } else if (action === 'delete' && entity === 'notification') {
+          if (await confirmAction('Delete this notification?')) { await api('/api/notifications/' + id, { method: 'DELETE' }); toast('Notification deleted'); loadNotifications(); }
+        } else if (action === 'new' && entity === 'feedback') {
+          openModal('Submit feedback', feedbackForm(), async (data) => { await api('/api/feedback', { method: 'POST', body: data }); toast('Feedback submitted'); loadFeedback(); entityModal.hide(); });
+        } else if (action === 'respond') {
+          const d = await api('/api/feedback');
+          const f = (d.feedback || []).find((x) => x._id === id);
+          if (!f) { toast('Feedback not found', 'danger'); return; }
+          openModal('Respond to feedback', feedbackRespondForm(f), async (data) => { await api('/api/feedback/' + id, { method: 'PUT', body: data }); toast('Response saved'); loadFeedback(); entityModal.hide(); });
+        } else if (action === 'delete' && entity === 'feedback') {
+          if (await confirmAction('Delete this feedback?')) { await api('/api/feedback/' + id, { method: 'DELETE' }); toast('Feedback deleted'); loadFeedback(); }
+        }
+      } catch (err) {
+        toast(err.message || 'Action failed', 'danger');
+      }
+    });
+
+    /* ---------- Filters / search ---------- */
+    ['userSearch', 'userRoleFilter'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', () => loadUsers());
+      el.addEventListener('change', () => loadUsers());
+    });
+    ['attFrom', 'attTo', 'attSubject', 'attStudent'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('change', () => loadAttendance());
+    });
+    const scoreSubEl = $('#scoreSubject');
+    if (scoreSubEl) scoreSubEl.addEventListener('change', () => loadScores());
+    const leaveStatEl = $('#leaveStatus');
+    if (leaveStatEl) leaveStatEl.addEventListener('change', () => loadLeaves());
+    const fbStatEl = $('#feedbackStatus');
+    if (fbStatEl) fbStatEl.addEventListener('change', () => loadFeedback());
+
+    /* ---------- Mark all read ---------- */
+    const markAllRead = $('#markAllRead');
+    if (markAllRead) markAllRead.addEventListener('click', async () => {
+      try {
+        const d = await api('/api/notifications');
+        await Promise.all((d.notifications || []).map((n) => api('/api/notifications/' + n._id + '/read', { method: 'POST' })));
+        loadNotifications();
+        toast('Marked as read');
+      } catch (e) { toast(e.message, 'danger'); }
+    });
+
+    /* ---------- Boot ---------- */
+    applyPermissions();
+    loadDashboard();
+    setInterval(() => {
+      // soft refresh notification badge every minute
+      api('/api/notifications').then((d) => {
+        $('#notifDot').style.display = (d.unread || 0) > 0 ? 'block' : 'none';
+      }).catch(() => {});
+    }, 60000);
+  })();
+  </script>
+</body>
+</html>
